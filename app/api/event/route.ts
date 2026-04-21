@@ -1,7 +1,8 @@
 //Create an event
 import pool from '@/lib/db';
+import { NextRequest } from 'next/server';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   // Parse the request body
   console.log('REQUEST', request)
   const { name, date } = await request.json();
@@ -21,8 +22,8 @@ export async function POST(request: Request) {
   }
  
   const result = await pool.query(
-  `INSERT INTO sessions (session_id, session_name, session_slug)
-   VALUES (uuid_generate_v1(), $1, $2)
+  `INSERT INTO events (event_name, event_slug)
+   VALUES ($1, $2)
    RETURNING *`,
   [name, name.toLowerCase().replace(/\s+/g, '-')+'-'+date]
 );
