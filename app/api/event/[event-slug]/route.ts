@@ -39,5 +39,29 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     });
   }
   
+}
+
+export async function GET(_: any, { params }: { params: Promise<{ "event-slug": string }> }) {
+  const { "event-slug": eventSlug } = await params;
  
+  try {
+    const result = await pool.query(
+      `SELECT * FROM events
+       LEFT JOIN sections ON events.event_id = sections.event_id
+       LEFT JOIN media ON events.event_id = media.event_id
+       WHERE event_slug = $1`,
+       [eventSlug]
+    );
+
+    return new Response(JSON.stringify(result.rows), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (error) {
+    return new Response('Event data not found', {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+  
 }
