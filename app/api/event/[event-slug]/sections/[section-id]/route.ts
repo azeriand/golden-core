@@ -41,3 +41,26 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
   
 }
+
+export async function DELETE(_: any, { params }: { params: Promise<{ "event-slug": string } & { "section-id": string }> }) {
+  const { "event-slug": eventSlug, "section-id": sectionId } = await params;
+
+  try {
+    const result = await pool.query(
+      `DELETE FROM sections s
+       USING events e
+       WHERE e.event_id = s.event_id and e.event_slug = $1 and s.section_id = $2`,
+      [eventSlug, sectionId]
+    );
+    return new Response('OK', {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+} catch (error: unknown) {
+    return new Response(error.message, {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+  
+}
