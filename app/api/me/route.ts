@@ -3,6 +3,8 @@
 import pool from '@/lib/db';
 import { NextRequest } from 'next/server';
 import bcrypt from 'bcrypt'
+import generateJWT from '@/app/utils/jwt';
+import { cookies } from 'next/headers'
 
 const saltRounds = 10;
 
@@ -11,56 +13,44 @@ const hashedPassword = (password: string) => new Promise((resolve, reject) => {
       if (err) return reject(err)
       return resolve(hash)
     });
-  })
+})
 
 export async function POST(request: NextRequest) {
     const { username, userEmail, password, isAdmin, eventId } = await request.json();
 
-     if (!username) {
-            return new Response('Username missing', {
-                status: 400,
-                headers: { 'Content-Type': 'text/plain' }
-            })
-        }
-
-        if (!userEmail) {
-            return new Response('User email missing', {
-                status: 400,
-                headers: { 'Content-Type': 'text/plain' }
-            })
-        }
-
-        if (!password) {
-            return new Response('Password missing', {
-                status: 400,
-                headers: { 'Content-Type': 'text/plain' }
-            })
-        }
-
-        if (isAdmin === undefined) {
-            return new Response('Range missing', {
-                status: 400,
-                headers: { 'Content-Type': 'text/plain' }
-            })
-        }
-
-        if (!eventId) {
-            return new Response('Event ID missing', {
-                status: 400,
-                headers: { 'Content-Type': 'text/plain' }
-            })
-        }
-
-    const user = await pool.query(
-    `SELECT user_id FROM users WHERE user_email = $1`,
-    [userEmail]
-    );
-
-    if (user.rows.length > 0) {
-        return new Response(JSON.stringify({ error: 'Usuario ya existe' }), {
+    if (!username) {
+        return new Response('Username missing', {
             status: 400,
-            headers: { 'Content-Type': 'application/json' }
-        });
+            headers: { 'Content-Type': 'text/plain' }
+        })
+    }
+
+    if (!userEmail) {
+        return new Response('User email missing', {
+            status: 400,
+            headers: { 'Content-Type': 'text/plain' }
+        })
+    }
+
+    if (!password) {
+        return new Response('Password missing', {
+            status: 400,
+            headers: { 'Content-Type': 'text/plain' }
+        })
+    }
+
+    if (isAdmin === undefined) {
+        return new Response('Range missing', {
+            status: 400,
+            headers: { 'Content-Type': 'text/plain' }
+        })
+    }
+
+    if (!eventId) {
+        return new Response('Event ID missing', {
+            status: 400,
+            headers: { 'Content-Type': 'text/plain' }
+        })
     }
 
     const hash = await hashedPassword(password);
@@ -71,6 +61,19 @@ export async function POST(request: NextRequest) {
         RETURNING *`,
         [username, userEmail.toLowerCase(), hash, isAdmin, eventId]
     );
+
+    const token = await generateJWT(result.rows[0]);
+
+    const cookieStore = await cookies()
+
+    cookieStore.set('auth_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 3
+    });
+
 
     return new Response(JSON.stringify(result.rows[0]), {
         status: 201,

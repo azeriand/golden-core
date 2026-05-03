@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@next/env": "^16.2.4",
     "@vercel/blob": "^2.3.1",
     "bcrypt": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
