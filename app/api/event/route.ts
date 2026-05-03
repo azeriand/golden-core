@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 );
   
  
-  return new Response(JSON.stringify(result.rows[0].session_slug), {
+  return new Response(JSON.stringify(result.rows[0].event_slug), {
     status: 201,
     headers: { 'Content-Type': 'application/json' }
   });
