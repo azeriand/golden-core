@@ -1,26 +1,41 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #FFF6EC;
+  --foreground: #5A463A;
+  --color-amber-700: #5A463A; /* Primary text and accents */
+  --color-purple-200: #E3D1F4; /* Secondary background */
+  --color-white-500: #FFF6EC; /* Primary background */
+  --color-white-200: #FFFCF8; /* Secondary foreground for purple buttons */
+  --color-purple-500: #C9A7E6; /* Primary color for buttons and accents */
+  --color-purple-700: #9D7BD6; /* Primary hover */
+  --color-pink-500: #F8BBD0; /* Accent color for highlights */
+  --color-green-500: #AFCB9D; /* Accent natural */
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: #FFFCF8;
 }
+
+.file {
+  opacity: 0;
+  width: 0.1px;
+  height: 0.1px;
+  position: absolute;
+}
+
+.file-input label {
+  display: block;
+  position: relative;
+  width: 200px;
+  height: 50px;
+  border-radius: 25px;
+  background-color: #AFCB9D;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+}
+
