@@ -17,15 +17,6 @@ export default function Home() {
     fetchEvent(params['event-slug']);
   } , []);
 
-  const images = [
-    'https://picsum.photos/id/1/200/300',
-    'https://picsum.photos/id/2/100/400',
-    'https://picsum.photos/id/3/550/100',
-    'https://picsum.photos/id/4/40/150',
-    'https://picsum.photos/id/5/400/100',
-    'https://picsum.photos/id/6/550/200',
-  ];
-
   return (
     <main className="flex flex-col align-items-center w-full gap-y-4">
       {
