@@ -46,14 +46,73 @@ export async function GET(_: any, { params }: { params: Promise<{ "event-slug": 
  
   try {
     const result = await pool.query(
-      `SELECT * FROM events
-       LEFT JOIN sections ON events.event_id = sections.event_id
-       LEFT JOIN media ON events.event_id = media.event_id
-       WHERE event_slug = $1`,
-       [eventSlug]
+    `SELECT
+      events.event_id,
+      events.event_name,
+      events.event_slug,
+      events.event_date,
+      sections.section_id,
+      sections.section_name,
+      sections.start_date,
+      sections.finish_date,
+      media.media_id,
+      media.user_id,
+      media.content,
+      media.date,
+      COALESCE(l.likes, 0) AS likes
+      FROM events
+      LEFT JOIN sections ON events.event_id = sections.event_id
+      LEFT JOIN media ON events.event_id = media.event_id
+      LEFT JOIN (
+          SELECT media_id, COUNT(*) AS likes
+          FROM likes
+          GROUP BY media_id
+      ) l ON media.media_id = l.media_id
+      WHERE events.event_slug = $1
+      ORDER BY sections.section_id, media.date;`,
+      [eventSlug]
     );
 
-    return new Response(JSON.stringify(result.rows), {
+    if (!result.rows || result.rows.length === 0) {
+      return new Response('Event data not found', {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const rows = result.rows;
+    const res = {
+      event_id: rows[0].event_id,
+      event_name: rows[0].event_name,
+      event_slug: rows[0].event_slug,
+      event_date: rows[0].event_date,
+      sections: rows.reduce((acc: any[], row: any) => {
+        const { section_id, section_name, start_date, finish_date, media_id, user_id, content, likes, date } = row;
+        // If there's no section for this row (outer join resulted in null), skip
+        if (section_id == null) return acc;
+
+        let section = acc.find(s => s.section_id === section_id);
+        if (!section) {
+          section = {
+            section_id,
+            section_name,
+            start_date,
+            finish_date,
+            media: []
+          };
+          acc.push(section);
+        }
+
+        // Only add media when media exists (media_id may be null from LEFT JOIN)
+        if (media_id != null) {
+          section.media.push({ media_id, user_id, content, likes, date });
+        }
+
+        return acc;
+      }, [])
+    }
+
+    return new Response(JSON.stringify(res), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -63,5 +122,5 @@ export async function GET(_: any, { params }: { params: Promise<{ "event-slug": 
       headers: { 'Content-Type': 'application/json' }
     });
   }
-  
+
 }
