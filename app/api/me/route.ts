@@ -1,19 +1,26 @@
-//Create or modify user
+//Create or modify user AND get data for a specific user
 
 import pool from '@/lib/db';
 import { NextRequest } from 'next/server';
 import bcrypt from 'bcrypt'
 import generateJWT from '@/app/utils/jwt';
 import { cookies } from 'next/headers'
+import jwt from "jsonwebtoken";
 
 const saltRounds = 10;
 
 const hashedPassword = (password: string) => new Promise((resolve, reject) => {
-    bcrypt.hash(password, saltRounds, (err, hash) => {
-      if (err) return reject(err)
-      return resolve(hash)
-    });
+  bcrypt.hash(password, saltRounds, (err, hash) => {
+    if (err) return reject(err)
+    return resolve(hash)
+  });
 })
+
+interface JWTPayload {
+  userId: number;
+  email: string;
+  isAdmin: boolean;
+}
 
 export async function POST(request: NextRequest) {
 
@@ -95,6 +102,58 @@ export async function POST(request: NextRequest) {
       { error: "Internal server error" },
       { status: 500 }
     );
+  }
+}
+
+export async function GET(request: NextRequest) {
+
+  try {
+
+    const token = request.cookies.get("auth_token")?.value;
+
+    if (!token) {
+      return Response.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET!
+    ) as JWTPayload;
+
+    const userId = decoded.userId;
+
+    const result = await pool.query(
+      'SELECT * FROM users WHERE user_id = $1',
+      [userId]
+    );
+
+    const user = result.rows[0];
+
+    if (!user) {
+      return Response.json(
+          { error: "User not found" },
+          { status: 404 }
+      );
+    }
+
+    return Response.json({
+      id: user.user_id,
+      username: user.username,
+      email: user.user_email,
+      isAdmin: user.is_admin,
+      eventId: user.event_id
+    });
+
+  } catch(error) {
+
+    return Response.json(
+      { error: "Invalid token" },
+      { status: 401 }
+  );
+
   }
 }
 
