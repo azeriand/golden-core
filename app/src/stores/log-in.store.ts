@@ -1,5 +1,6 @@
 import {create} from 'zustand'
 import axios from 'axios'
+import useAuthStore from './auth.store';
 
 interface User {
     email: string;
@@ -25,7 +26,9 @@ const useLogInStore =  create<User>((set, get) => ({
                 email,
                 password,
             });
-            //Limpiamos los inputs despues de un registro exitoso
+
+            await useAuthStore.getState().loadUser();
+            
             set({
                 email: "",
                 password: "",
