@@ -10,30 +10,33 @@ import { useParams } from 'next/navigation'
 
 export default function Home() {
 
-  const { fetchEvent, event_name, event_date, sections } = useEventStore();
+  const { fetchEvent, event, loading } = useEventStore();
   const params = useParams<{ id: string, ['event-slug']: string }>()
+  const slug = params["event-slug"];
 
   useEffect(() => {
-    fetchEvent(params['event-slug']);
-  } , []);
+    fetchEvent(slug);
+  }, [fetchEvent, slug]);
+
+  if (loading) {
+    return <span className="loader"></span>;
+  }
+
+  if (!event) {
+    return <p>Event not found.</p>;
+  }
 
   return (
     <main className="flex flex-col align-items-center w-full gap-y-4">
-      {
-        event_name !== "" && (
-          <>
-            <HomeTopLayout event_name={event_name} event_date={event_date} />
-            <Topbar event_name={event_name}/>
-            <UserNavbar />
-            {sections.map((section) => (
-              <div key={section.section_id}>
-                <SectionHeader label={section.section_name} time={`${section.start_date}-${section.finish_date}`} />
-                <Masonry images={section.media} />
-              </div>
-            ))}
-          </>
-        )
-      }
+      <HomeTopLayout event_name={event.event_name} event_date={event.event_date} />
+      <Topbar event_name={event.event_name}/>
+      <UserNavbar />
+      {event.sections.map((section) => (
+        <div key={section.section_id}>
+          <SectionHeader label={section.section_name} time={`${section.start_date}-${section.finish_date}`} />
+          <Masonry images={section.media} />
+        </div>
+      ))}
     </main>
   );
 
