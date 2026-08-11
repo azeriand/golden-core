@@ -1,5 +1,6 @@
 //Modify/get data/delete data for a specific event
 
+import jwt from "jsonwebtoken";
 import pool from '@/lib/db';
 import { NextRequest } from 'next/server';
 
@@ -41,9 +42,30 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   
 }
 
-export async function GET(_: any, { params }: { params: Promise<{ "event-slug": string }> }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ "event-slug": string }> }) {
   const { "event-slug": eventSlug } = await params;
  
+  const token = request.cookies.get("auth_token")?.value;
+
+  if (!token) {
+    return new Response("Unauthorized", {
+      status: 401,
+    });
+  } 
+
+  const decoded = jwt.verify(
+    token,
+    process.env.JWT_SECRET
+  ) as any;
+
+  const userId = decoded.userId;
+
+  if (!userId) {
+    return new Response("Unauthorized", {
+      status: 401,
+    });
+  }
+
   try {
     const result = await pool.query(
     `SELECT
@@ -59,7 +81,13 @@ export async function GET(_: any, { params }: { params: Promise<{ "event-slug": 
       media.user_id,
       media.content,
       media.date,
-      COALESCE(l.likes, 0) AS likes
+      COALESCE(l.likes, 0) AS likes,
+      EXISTS (
+      SELECT 1
+        FROM likes user_like
+        WHERE user_like.media_id = media.media_id
+          AND user_like.user_id = $2
+      ) AS liked
       FROM events
       LEFT JOIN sections ON events.event_id = sections.event_id
       LEFT JOIN media ON events.event_id = media.event_id
@@ -70,7 +98,7 @@ export async function GET(_: any, { params }: { params: Promise<{ "event-slug": 
       ) l ON media.media_id = l.media_id
       WHERE events.event_slug = $1
       ORDER BY sections.section_id, media.date;`,
-      [eventSlug]
+      [eventSlug, userId]
     );
 
     if (!result.rows || result.rows.length === 0) {
@@ -87,7 +115,7 @@ export async function GET(_: any, { params }: { params: Promise<{ "event-slug": 
       event_slug: rows[0].event_slug,
       event_date: rows[0].event_date,
       sections: rows.reduce((acc: any[], row: any) => {
-        const { section_id, section_name, start_date, finish_date, media_id, user_id, content, likes, date } = row;
+        const { section_id, section_name, start_date, finish_date, media_id, user_id, content, likes, liked, date } = row;
         // If there's no section for this row (outer join resulted in null), skip
         if (section_id == null) return acc;
 
@@ -105,7 +133,7 @@ export async function GET(_: any, { params }: { params: Promise<{ "event-slug": 
 
         // Only add media when media exists (media_id may be null from LEFT JOIN)
         if (media_id != null) {
-          section.media.push({ media_id, user_id, content, likes, date });
+          section.media.push({ media_id, user_id, content, likes, liked, date });
         }
 
         return acc;

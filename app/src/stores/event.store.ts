@@ -8,8 +8,8 @@ interface EventStore {
     loading: boolean;
     fetchEvent: (event_slug: string) => Promise<void>;
     toggleLike: (mediaId: number) => Promise<void>;
-
 }
+
 const useEventStore = create<EventStore>((set, get) => ({
 
     event: null,
@@ -43,31 +43,44 @@ const useEventStore = create<EventStore>((set, get) => ({
         const event = get().event;
 
         if (!event) return;
-        const updatedSections = event.sections.map((section) => {
-            const updatedMedia = section.media.map((media) => {
-                if (media.media_id === mediaId) {
+
+        try {
+
+            const response = await axios.post(
+                `/api/event/${event.event_slug}/media/${mediaId}/likes`
+            );
+
+            const { liked, likes } = response.data;
+
+            const updatedSections = event.sections.map((section) => {
+                const updatedMedia = section.media.map((media) => {
+                    if (media.media_id === mediaId) {
+                        return {
+                            ...media,
+                            liked,
+                            likes
+                        }
+                    }
                     return media
-                }
+                })
                 return {
-                    ...media,
-                    liked: !media.liked,
-                    likes: media.liked ? media.likes - 1 : media.likes + 1
+                    ...section,
+                    media: updatedMedia
                 }
             })
-            return {
-                ...section,
-                media: updatedMedia
+
+            const updatedEvent = {
+                ...event,
+                sections: updatedSections
             }
-        })
 
-        const updatedEvent = {
-            ...event,
-            sections: updatedSections
+            set({
+                event: updatedEvent
+            })
+
+        } catch (error) {
+            console.error("Error toggling like", error);
         }
-
-        set({
-            event: updatedEvent
-        })
     }
 
 }));
