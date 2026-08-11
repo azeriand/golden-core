@@ -15,12 +15,12 @@ export default function Masonry({ images }: MasonryProps) {
         <section className='grid grid-cols-2 gap-2 grid-flow-row'>
             <div className='flex flex-col gap-2'>
                 {imagesOdd.map((media: Media, index) => (
-                    <Image key={index} index={index} src={media.content} likes={media.likes} />
+                    <Image key={index} index={index} src={media.content} likes={media.likes} mediaID={media.media_id} liked={media.liked} />
                 ))}
             </div>
             <div className='flex flex-col gap-2'>
                 {imagesEven.map((media: Media, index) => (
-                    <Image key={index} index={index} src={media.content} likes={media.likes} />
+                    <Image key={index} index={index} src={media.content} likes={media.likes} mediaID={media.media_id} liked={media.liked} />
                 ))}
             </div>
         </section>

@@ -1,3 +1,5 @@
+import { Media } from "./media";
+
 export type SectionRequest = {
     section_name: string;
     start_date: string;
@@ -7,4 +9,5 @@ export type SectionRequest = {
 export type Section = SectionRequest & {
     section_id: string;
     event_id: string;
+    media: Media[];
 }
