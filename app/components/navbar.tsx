@@ -5,6 +5,7 @@ import { TbPhotoPlus } from "react-icons/tb";
 import { PiFolderUserBold } from "react-icons/pi";
 import { useRef } from "react";
 import { useParams } from "next/navigation";
+import useEventStore from "../src/stores/event.store";
 
 export default function Navbar() {
 
@@ -13,6 +14,7 @@ export default function Navbar() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const { state, changeState } = useGlobalStore();
+    const { fetchEvent } = useEventStore();
 
     const updateState = (newState: "home" | "myPhotos" | "favPhotos" | "personalFolder") => {
         
@@ -51,8 +53,10 @@ export default function Navbar() {
                 );
 
                 const data = await response.json();
-
                 console.log("UPLOAD RESULT:", data);
+                
+                await fetchEvent(eventSlug);
+
             }}/>
 
             <Button icon={<PiFolderUserBold size={32}/>} color="purple" className="rounded-full px-9!" onClick={() => updateState("personalFolder")} {...personalFolderButtonProps}/>
