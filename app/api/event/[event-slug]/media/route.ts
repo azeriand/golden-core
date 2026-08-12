@@ -4,6 +4,7 @@ import { NextRequest } from 'next/server';
 import jwt from 'jsonwebtoken'
 import { cookies } from 'next/headers'
 import { put } from "@vercel/blob";
+import exifr from 'exifr';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ "event-slug": string }> }) {
     const { "event-slug": eventSlug } = await params;
@@ -20,6 +21,27 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         });
     }
   
+    const arrayBuffer = await file.arrayBuffer();
+    const exif = await exifr.parse(arrayBuffer);
+    const dateTimeOriginal = exif?.DateTimeOriginal;
+    const photoOffset = exif?.OffsetTimeOriginal;
+    
+    let photoTime = null;
+
+    if (dateTimeOriginal && photoOffset) {
+        const [hours, minutes] = photoOffset
+            .split(":")
+            .map(Number);
+
+        const offsetMinutes = hours * 60 + minutes;
+
+        const localDate = new Date(
+            dateTimeOriginal.getTime() + offsetMinutes * 60 * 1000
+        );
+
+        photoTime = localDate.toISOString().slice(11, 16);
+    }
+
     if (!date) {
         return new Response('Date missing', {
             status: 400,
@@ -47,7 +69,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             headers: { 'Content-Type': 'application/json' }
         })
     }
-    console.log('DECODED', decoded)
+    
     const userId = decoded.userId
 
     const eventResult = await pool.query(
@@ -67,6 +89,30 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const eventId = eventResult.rows[0].event_id;
 
+    let sectionId: null | number = null;
+
+    try {
+        const sectionResult = await pool.query(
+            `
+            SELECT section_id
+            FROM sections
+            WHERE event_id = $1
+            AND start_date::time <= $2::time
+            AND finish_date::time >= $2::time
+            LIMIT 1
+            `,
+            [eventId, photoTime]
+        );
+
+        sectionId = sectionResult.rows[0]?.section_id ?? null;
+
+    }    catch (error) {
+        console.error("Error finding section:", error);
+        return new Response("Error finding section", {
+            status: 500,
+        });
+    }
+
     const blob = await put(file.name, file, {
         access: "public",
     });
@@ -75,9 +121,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const result = await pool.query(
         `INSERT INTO media (content, date, user_id, section_id, event_id)
-        VALUES ($1, $2, $3, NULL, $4)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *`,
-        [content, date, userId, eventId]
+        [content, date, userId, sectionId, eventId]
     );
 
     return new Response(JSON.stringify(result.rows[0]), {

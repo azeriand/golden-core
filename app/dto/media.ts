@@ -5,4 +5,5 @@ export interface Media {
     likes: number;
     liked: boolean;
     date: string;
+    section_id: number | null;
 }
