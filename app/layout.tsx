@@ -14,8 +14,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
 
- const { loadUser, authenticated, loading } = useAuthStore();
- const [mode, setMode] = useState<"signup" | "login">("signup");
+  const { loadUser, authenticated, loading } = useAuthStore();
+  const [mode, setMode] = useState<"signup" | "login">("signup");
  
   useEffect(() => {
     loadUser();
@@ -30,7 +30,7 @@ export default function RootLayout({
           <main className="flex flex-1 p-4">
             {children}
           </main>
-          <Navbar />
+          <Navbar/>
         </div>
       </body>
     </html>
