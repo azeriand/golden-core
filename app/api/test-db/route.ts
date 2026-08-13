@@ -9,11 +9,18 @@ export async function GET() {
       success: true,
       now: result.rows[0].now,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const envCheck = {
+      DATABASE_URL_set: !!process.env.DATABASE_URL,
+      DB_DATABASE_URL_set: !!process.env.DB_DATABASE_URL,
+      DB_POSTGRES_URL_set: !!process.env.DB_POSTGRES_URL,
+      DB_PGHOST_set: !!process.env.DB_PGHOST,
+    };
     return NextResponse.json(
       {
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
+        envCheck,
       },
       { status: 500 }
     );
