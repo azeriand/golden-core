@@ -58,9 +58,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     let decoded: any
     try {
+
+        const jwtSecret = process.env.JWT_SECRET;
+
+        if (!jwtSecret) {
+            return new Response("JWT_SECRET is not configured", {
+                status: 500,
+            });
+        }
+        
         decoded = jwt.verify(
             token,
-            process.env.JWT_SECRET
+            jwtSecret
         ) as any
 
     } catch {

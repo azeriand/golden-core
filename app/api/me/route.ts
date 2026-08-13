@@ -118,9 +118,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const jwtSecret = process.env.JWT_SECRET;
+
+    if (!jwtSecret) {
+        return new Response("JWT_SECRET is not configured", {
+            status: 500,
+        });
+    }
+    
     const decoded = jwt.verify(
       token,
-      process.env.JWT_SECRET!
+      jwtSecret
     ) as JWTPayload;
 
     const userId = decoded.userId;
