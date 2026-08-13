@@ -1,6 +1,6 @@
 //Create event sections
 import pool from '@/lib/db';
-import { SectionRequest } from '@/dto/section';
+import { SectionRequest } from '@/app/dto/section';
 import { NextRequest } from 'next/server';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ "event-slug": string }> }) {

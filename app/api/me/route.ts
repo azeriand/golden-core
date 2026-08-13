@@ -219,7 +219,7 @@ export async function PUT(request: NextRequest) {
 } catch (error: unknown) {
 
     const message = error instanceof Error ? error.message : "Unknown error";
-    
+
     return new Response(message, {
       status: 400,
       headers: { 'Content-Type': 'application/json' }

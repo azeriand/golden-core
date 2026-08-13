@@ -6,7 +6,7 @@ interface MasonryProps {
     
   images: Media[];
   sections: Section[];
-  onZoom?: (media: Media) => void;
+  onZoom: (media: Media) => void;
 }
 
 export default function Masonry({ images, sections, onZoom }: MasonryProps) {
