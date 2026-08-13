@@ -90,7 +90,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       ) AS liked
       FROM events
       LEFT JOIN sections ON events.event_id = sections.event_id
-      LEFT JOIN media ON events.event_id = media.event_id
+      LEFT JOIN media ON sections.section_id = media.section_id
       LEFT JOIN (
           SELECT media_id, COUNT(*) AS likes
           FROM likes

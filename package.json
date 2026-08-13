@@ -14,6 +14,7 @@
     "axios": "^1.17.0",
     "azeriand-library": "^1.19.0",
     "bcrypt": "^6.0.0",
+    "exifr": "^7.1.3",
     "jsonwebtoken": "^9.0.3",
     "next": "16.2.1",
     "pg": "^8.20.0",
