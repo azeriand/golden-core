@@ -33,8 +33,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
-} catch (error: unknown) {
-    return new Response(error.message, {
+
+  } catch (error: unknown) {
+
+    const message = error instanceof Error ? error.message : "Unknown error";
+
+    return new Response(message, {
       status: 400,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -56,8 +60,11 @@ export async function DELETE(_: any, { params }: { params: Promise<{ "event-slug
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
-} catch (error: unknown) {
-    return new Response(error.message, {
+  } catch (error: unknown) {
+
+    const message = error instanceof Error ? error.message : "Unknown error";
+    
+    return new Response(message, {
       status: 400,
       headers: { 'Content-Type': 'application/json' }
     });

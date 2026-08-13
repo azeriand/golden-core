@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
             status: 500,
         });
     }
-    
+
     const decoded = jwt.verify(
       token,
       jwtSecret
@@ -217,7 +217,10 @@ export async function PUT(request: NextRequest) {
       headers: { 'Content-Type': 'application/json' }
     });
 } catch (error: unknown) {
-    return new Response(error.message, {
+
+    const message = error instanceof Error ? error.message : "Unknown error";
+    
+    return new Response(message, {
       status: 400,
       headers: { 'Content-Type': 'application/json' }
     });
