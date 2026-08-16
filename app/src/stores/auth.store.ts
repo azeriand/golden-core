@@ -15,7 +15,7 @@ interface AuthStore {
     loading: boolean;
 
     setUser: (user: User) => void;
-    logout: () => void;
+    logout: () => Promise<void>;
     loadUser: () => Promise<void>;
 }
 
@@ -31,11 +31,17 @@ const useAuthStore = create<AuthStore>((set) => ({
         loading: false
     }),
 
-    logout: () => set({
-        user: null,
-        authenticated: false,
-        loading: false
-    }),
+    logout: async () => {
+        try {
+            await axios.post("/api/me/logout");
+        } finally {
+            set({
+                user: null,
+                authenticated: false,
+                loading: false
+            });
+        }
+    },
 
     loadUser: async () => {
 
