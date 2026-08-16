@@ -33,8 +33,8 @@ export default function Navbar() {
     const personalFolderButtonProps = state === "myPhotos" || state === "favPhotos" ? selectedButtonProps : defaultButtonProps;
 
     return(
-        <Card noPadding color='white' intensity={200} className="flex justify-center gap-x-3 fixed bottom-4 left-4 right-4 border-t p-4 rounded-xl">
-            <Button icon={<AiFillHome size={32}/>} color="purple" className="rounded-full px-9!" onClick={() => updateState("home")} {...homeButtonProps}/>
+        <Card noPadding appearance='mate' color='white' className="flex justify-center gap-x-3 fixed bottom-4 left-4 right-4 border-t p-4 rounded-xl bg-white/95! backdrop-blur-md w-full">
+            <Button appearance='mate' icon={<AiFillHome size={32}/>} color="purple" className="rounded-full px-9!" onClick={() => updateState("home")} {...homeButtonProps}/>
             <Button appearance='mate' color="purple" intensity={500} className="rounded-full px-9!" icon={<TbPhotoPlus size={36}/>} onClick={() => fileInputRef.current?.click()}/>
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
                 const file = e.target.files?.[0];
@@ -59,7 +59,7 @@ export default function Navbar() {
 
             }}/>
 
-            <Button icon={<PiFolderUserBold size={32}/>} color="purple" className="rounded-full px-9!" onClick={() => updateState("personalFolder")} {...personalFolderButtonProps}/>
+            <Button appearance="mate" icon={<PiFolderUserBold size={32}/>} color="purple" className="rounded-full px-9!" onClick={() => updateState("personalFolder")} {...personalFolderButtonProps}/>
         </Card>
     )
 }
