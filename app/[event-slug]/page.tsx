@@ -67,7 +67,7 @@ export default function Home() {
   return (
     <main className="flex flex-col align-items-center w-full gap-y-4">
       {zoomedPhoto && ( 
-        <ZoomPhoto src={zoomedPhoto.content} likes={zoomedPhoto.likes} mediaID={zoomedPhoto.media_id} liked={zoomedPhoto.liked} onClose={() => setZoomedPhoto(null)} />
+        <ZoomPhoto src={zoomedPhoto.content} mediaID={zoomedPhoto.media_id} onClose={() => setZoomedPhoto(null)} />
       )}
       <div ref={headerRef}>
         <HomeTopLayout event_name={event.event_name} event_date={event.event_date} />
