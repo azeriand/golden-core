@@ -98,25 +98,73 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const eventId = eventResult.rows[0].event_id;
 
-    let sectionId: null | number = null;
+    let sectionId: number;
 
     try {
-        const sectionResult = await pool.query(
-            `
-            SELECT section_id
-            FROM sections
-            WHERE event_id = $1
-            AND start_date::time <= $2::time
-            AND finish_date::time >= $2::time
-            LIMIT 1
-            `,
-            [eventId, photoTime]
-        );
+        if (photoTime !== null) {
+            // Tenemos una hora: intentamos encontrar la sección correspondiente
+            const sectionResult = await pool.query(
+                `
+                SELECT section_id
+                FROM sections
+                WHERE event_id = $1
+                AND section_name <> 'Sin clasificar'
+                AND start_date::time <= $2::time
+                AND finish_date::time >= $2::time
+                LIMIT 1
+                `,
+                [eventId, photoTime]
+            );
 
-        sectionId = sectionResult.rows[0]?.section_id ?? null;
+            if (sectionResult.rows.length === 0) {
+                // Tenemos hora, pero ninguna sección coincide
+                const fallbackResult = await pool.query(
+                    `
+                    SELECT section_id
+                    FROM sections
+                    WHERE event_id = $1
+                    AND section_name = 'Sin clasificar'
+                    LIMIT 1
+                    `,
+                    [eventId]
+                );
 
-    }    catch (error) {
+                if (fallbackResult.rows.length === 0) {
+                    return new Response("Sin clasificar section not found", {
+                        status: 500,
+                    });
+                }
+
+                sectionId = fallbackResult.rows[0].section_id;
+            } else {
+                sectionId = sectionResult.rows[0].section_id;
+            }
+
+        } else {
+            // No tenemos hora: usamos "Sin clasificar"
+            const fallbackResult = await pool.query(
+                `
+                SELECT section_id
+                FROM sections
+                WHERE event_id = $1
+                AND section_name = 'Sin clasificar'
+                LIMIT 1
+                `,
+                [eventId]
+            );
+
+            if (fallbackResult.rows.length === 0) {
+                return new Response("Sin clasificar section not found", {
+                    status: 500,
+                });
+            }
+
+            sectionId = fallbackResult.rows[0].section_id;
+        }
+
+    } catch (error) {
         console.error("Error finding section:", error);
+
         return new Response("Error finding section", {
             status: 500,
         });
