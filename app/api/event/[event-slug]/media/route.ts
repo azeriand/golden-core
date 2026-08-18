@@ -15,31 +15,59 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const file = formData.get("file");
     const date = formData.get("date") as string;
 
+    const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB
+    
     if (!(file instanceof File)) {
         return new Response("File missing", {
             status: 400,
         });
     }
-  
-    const arrayBuffer = await file.arrayBuffer();
-    const exif = await exifr.parse(arrayBuffer);
-    const dateTimeOriginal = exif?.DateTimeOriginal;
-    const photoOffset = exif?.OffsetTimeOriginal;
     
-    let photoTime = null;
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
 
-    if (dateTimeOriginal && photoOffset) {
-        const [hours, minutes] = photoOffset
-            .split(":")
-            .map(Number);
+    if (!isImage && !isVideo) {
+        return new Response("Invalid media type", {
+            status: 400,
+        });
+    }
 
-        const offsetMinutes = hours * 60 + minutes;
+    if (file.size > MAX_FILE_SIZE) {
+        return new Response("File too large", {
+            status: 400,
+        });
+    }
 
-        const localDate = new Date(
-            dateTimeOriginal.getTime() + offsetMinutes * 60 * 1000
-        );
+    let photoTime: string | null = null;
 
-        photoTime = localDate.toISOString().slice(11, 16);
+    if (isImage) {
+        const arrayBuffer = await file.arrayBuffer();
+
+        try {
+            const exif = await exifr.parse(arrayBuffer);
+
+            const dateTimeOriginal = exif?.DateTimeOriginal;
+            const photoOffset = exif?.OffsetTimeOriginal;
+
+            if (dateTimeOriginal && photoOffset) {
+                const [hours, minutes] = photoOffset
+                    .split(":")
+                    .map(Number);
+
+                const offsetMinutes =
+                    (hours >= 0 ? 1 : -1) *
+                    (Math.abs(hours) * 60 + minutes);
+
+                const localDate = new Date(
+                    dateTimeOriginal.getTime() +
+                    offsetMinutes * 60 * 1000
+                );
+
+                photoTime = localDate.toISOString().slice(11, 16);
+            }
+        } catch (error) {
+            console.error("Error reading image metadata:", error);
+        }
     }
 
     if (!date) {
@@ -177,10 +205,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const content = blob.url;
 
     const result = await pool.query(
-        `INSERT INTO media (content, date, user_id, section_id, event_id)
-        VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO media (content, type, date, user_id, section_id, event_id)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *`,
-        [content, date, userId, sectionId, eventId]
+        [content, file.type, date, userId, sectionId, eventId]
     );
 
     return new Response(JSON.stringify(result.rows[0]), {
