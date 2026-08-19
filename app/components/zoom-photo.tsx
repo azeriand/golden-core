@@ -4,7 +4,7 @@ import { Button } from "azeriand-library";
 import LikeCounter from "./like-counter";
 import useEventStore from "../src/stores/event.store";
 
-export default function ZoomPhoto({ src, likes, mediaID, liked, type, eventSlug, onClose }: { src: string, likes: number, mediaID: number, liked: boolean, type: string | null, eventSlug: string, onClose: () => void }) {
+export default function ZoomPhoto({ src, likes: initialLikes, mediaID, liked: initialLiked, type, eventSlug, onClose }: { src: string, likes: number, mediaID: number, liked: boolean, type: string | null, eventSlug: string, onClose: () => void }) {
     const { event } = useEventStore();
 
     // Read current like state from the store so it stays in sync
@@ -12,8 +12,8 @@ export default function ZoomPhoto({ src, likes, mediaID, liked, type, eventSlug,
         .flatMap((section) => section.media)
         .find((m) => m.media_id === mediaID);
 
-    const likes = media?.likes ?? 0;
-    const liked = media?.liked ?? false;
+    const likes = media?.likes ?? initialLikes;
+    const liked = media?.liked ?? initialLiked;
 
     const handleDownload = async () => {
         const response = await fetch(
