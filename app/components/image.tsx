@@ -4,7 +4,7 @@ import useMediaUiStore from "../src/stores/media-ui.store";
 import { MdOutlineRadioButtonUnchecked } from "react-icons/md";
 import { MdOutlineCheckCircleOutline } from "react-icons/md";
 
-export default function Image({index, src, likes, liked, mediaID, type, section_id, sections, onSelect, onZoom}: {index: number, src: string, likes: number, liked: boolean, mediaID: number, type: string | null, section_id: number|null, sections: Section[], selected: boolean, onSelect: () => void, onZoom: () => void}) {
+export default function Image({index, src, likes, liked, mediaID, type, section_id, sections, onZoom}: {index: number, src: string, likes: number, liked: boolean, mediaID: number, type: string | null, section_id: number|null, sections: Section[], selected?: boolean, onSelect?: () => void, onZoom: () => void}) {
 
     const { isSelectionMode, selectedIds, toggleSelected } = useMediaUiStore()
 
