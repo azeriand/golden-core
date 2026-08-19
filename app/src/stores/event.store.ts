@@ -44,41 +44,65 @@ const useEventStore = create<EventStore>((set, get) => ({
 
         if (!event) return;
 
-        try {
+        // Optimistically update the UI immediately
+        const previousEvent = event;
 
+        const optimisticSections = event.sections.map((section) => ({
+            ...section,
+            media: section.media.map((media) => {
+                if (media.media_id === mediaId) {
+                    return {
+                        ...media,
+                        liked: !media.liked,
+                        likes: media.liked ? media.likes - 1 : media.likes + 1,
+                    };
+                }
+                return media;
+            }),
+        }));
+
+        set({
+            event: {
+                ...event,
+                sections: optimisticSections,
+            },
+        });
+
+        try {
             const response = await axios.post(
                 `/api/event/${event.event_slug}/media/${mediaId}/likes`
             );
 
             const { liked, likes } = response.data;
 
-            const updatedSections = event.sections.map((section) => {
-                const updatedMedia = section.media.map((media) => {
+            // Reconcile with server response
+            const currentEvent = get().event;
+            if (!currentEvent) return;
+
+            const reconciledSections = currentEvent.sections.map((section) => ({
+                ...section,
+                media: section.media.map((media) => {
                     if (media.media_id === mediaId) {
                         return {
                             ...media,
                             liked,
-                            likes
-                        }
+                            likes,
+                        };
                     }
-                    return media
-                })
-                return {
-                    ...section,
-                    media: updatedMedia
-                }
-            })
-
-            const updatedEvent = {
-                ...event,
-                sections: updatedSections
-            }
+                    return media;
+                }),
+            }));
 
             set({
-                event: updatedEvent
-            })
+                event: {
+                    ...currentEvent,
+                    sections: reconciledSections,
+                },
+            });
 
         } catch (error) {
+            // Revert to previous state on failure
+            set({ event: previousEvent });
             console.error("Error toggling like", error);
         }
     }
