@@ -1,11 +1,11 @@
 import { Card, Button } from "azeriand-library"
 import useGlobalStore from "../src/stores/global.store";
+import useUploadStore from "../src/stores/upload.store";
 import { AiFillHome } from "react-icons/ai";
 import { TbPhotoPlus } from "react-icons/tb";
 import { PiFolderUserBold } from "react-icons/pi";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import useEventStore from "../src/stores/event.store";
 
 export default function Navbar() {
 
@@ -14,7 +14,8 @@ export default function Navbar() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const { state, changeState } = useGlobalStore();
-    const { fetchEvent } = useEventStore();
+    const { enqueueFiles } = useUploadStore();
+    const [fileError, setFileError] = useState<string | null>(null);
 
     const updateState = (newState: "home" | "myPhotos" | "favPhotos" | "personalFolder") => {
         
@@ -36,30 +37,23 @@ export default function Navbar() {
         <Card noPadding appearance='mate' color='white' className="flex justify-center gap-x-3 fixed bottom-4 left-4 right-4 border-t p-4 rounded-xl bg-white/95! backdrop-blur-md w-full" style={{ willChange: "transform" }}>
             <Button appearance='mate' icon={<AiFillHome size={32}/>} color="purple" className="rounded-full px-9!" onClick={() => updateState("home")} {...homeButtonProps}/>
             <Button appearance='mate' color="purple" intensity={500} className="rounded-full px-9!" icon={<TbPhotoPlus size={36}/>} onClick={() => fileInputRef.current?.click()}/>
-            <input ref={fileInputRef} type="file" accept="image/*, video/*" className="hidden" onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                const formData = new FormData();
+            <input ref={fileInputRef} type="file" accept="image/*, video/*" multiple className="hidden" onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                if (files.length === 0) return;
 
-                formData.append("file", file);
-                formData.append("date", new Date().toISOString());
+                if (files.length > 20) {
+                    setFileError("You can select up to 20 files at a time.");
+                    e.target.value = "";
+                    return;
+                }
 
-                const response = await fetch(
-                    `/api/event/${eventSlug}/media`,
-                    {
-                        method: "POST",
-                        body: formData,
-                    }
-                );
-
-                const data = await response.json();
-                console.log("UPLOAD RESULT:", data);
-                
-                await fetchEvent(eventSlug);
-
+                setFileError(null);
+                enqueueFiles(files, eventSlug);
+                e.target.value = "";
             }}/>
 
             <Button appearance="mate" icon={<PiFolderUserBold size={32}/>} color="purple" className="rounded-full px-9!" onClick={() => updateState("personalFolder")} {...personalFolderButtonProps}/>
+            {fileError && <p className="absolute -top-10 left-0 right-0 text-center text-red-500 text-sm bg-white/95 rounded-lg py-1 px-2">{fileError}</p>}
         </Card>
     )
 }
