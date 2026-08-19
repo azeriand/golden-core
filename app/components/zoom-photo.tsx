@@ -3,8 +3,33 @@ import { FiDownload } from "react-icons/fi";
 import { Button } from "azeriand-library";
 import LikeCounter from "./like-counter";
 
-export default function ZoomPhoto({ src, likes, mediaID, liked, type, onClose }: { src: string, likes: number, mediaID: number, liked: boolean, type: string | null, onClose: () => void }) {
+export default function ZoomPhoto({ src, likes, mediaID, liked, type, eventSlug, onClose }: { src: string, likes: number, mediaID: number, liked: boolean, type: string | null, eventSlug: string, onClose: () => void }) {
 
+    const handleDownload = async () => {
+        const response = await fetch(
+            `/api/event/${eventSlug}/media/${mediaID}/download`
+        );
+
+        if (!response.ok) {
+            console.error("Error downloading media");
+            return;
+        }
+
+        const blob = await response.blob();
+
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+
+        link.href = url;
+        link.download = `media-${mediaID}`;
+
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        URL.revokeObjectURL(url);
+    };
     return(
         <article className="fixed inset-0 z-[9999] flex flex-col gap-y-4 p-10 items-center justify-center bg-black/80" style={{backdropFilter: 'blur(5px)'}}>
             <FaRegCircleXmark size={24} className='absolute top-6 right-6 text-white cursor-pointer' onClick={onClose} />
@@ -23,7 +48,7 @@ export default function ZoomPhoto({ src, likes, mediaID, liked, type, onClose }:
             )}
             <section className='flex justify-end gap-4 items-center w-full'>
                 <LikeCounter likes={likes} mediaID={mediaID} liked={liked} className='h-full'/>
-                <Button><FiDownload size={20}/></Button>
+                <Button onClick={handleDownload}><FiDownload size={20}/></Button>
             </section>
         </article>
     )
