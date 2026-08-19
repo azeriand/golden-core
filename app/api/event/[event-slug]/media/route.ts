@@ -15,31 +15,59 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const file = formData.get("file");
     const date = formData.get("date") as string;
 
+    const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB
+    
     if (!(file instanceof File)) {
         return new Response("File missing", {
             status: 400,
         });
     }
-  
-    const arrayBuffer = await file.arrayBuffer();
-    const exif = await exifr.parse(arrayBuffer);
-    const dateTimeOriginal = exif?.DateTimeOriginal;
-    const photoOffset = exif?.OffsetTimeOriginal;
     
-    let photoTime = null;
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
 
-    if (dateTimeOriginal && photoOffset) {
-        const [hours, minutes] = photoOffset
-            .split(":")
-            .map(Number);
+    if (!isImage && !isVideo) {
+        return new Response("Invalid media type", {
+            status: 400,
+        });
+    }
 
-        const offsetMinutes = hours * 60 + minutes;
+    if (file.size > MAX_FILE_SIZE) {
+        return new Response("File too large", {
+            status: 400,
+        });
+    }
 
-        const localDate = new Date(
-            dateTimeOriginal.getTime() + offsetMinutes * 60 * 1000
-        );
+    let photoTime: string | null = null;
 
-        photoTime = localDate.toISOString().slice(11, 16);
+    if (isImage) {
+        const arrayBuffer = await file.arrayBuffer();
+
+        try {
+            const exif = await exifr.parse(arrayBuffer);
+
+            const dateTimeOriginal = exif?.DateTimeOriginal;
+            const photoOffset = exif?.OffsetTimeOriginal;
+
+            if (dateTimeOriginal && photoOffset) {
+                const [hours, minutes] = photoOffset
+                    .split(":")
+                    .map(Number);
+
+                const offsetMinutes =
+                    (hours >= 0 ? 1 : -1) *
+                    (Math.abs(hours) * 60 + minutes);
+
+                const localDate = new Date(
+                    dateTimeOriginal.getTime() +
+                    offsetMinutes * 60 * 1000
+                );
+
+                photoTime = localDate.toISOString().slice(11, 16);
+            }
+        } catch (error) {
+            console.error("Error reading image metadata:", error);
+        }
     }
 
     if (!date) {
@@ -98,25 +126,73 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const eventId = eventResult.rows[0].event_id;
 
-    let sectionId: null | number = null;
+    let sectionId: number;
 
     try {
-        const sectionResult = await pool.query(
-            `
-            SELECT section_id
-            FROM sections
-            WHERE event_id = $1
-            AND start_date::time <= $2::time
-            AND finish_date::time >= $2::time
-            LIMIT 1
-            `,
-            [eventId, photoTime]
-        );
+        if (photoTime !== null) {
+            // Tenemos una hora: intentamos encontrar la sección correspondiente
+            const sectionResult = await pool.query(
+                `
+                SELECT section_id
+                FROM sections
+                WHERE event_id = $1
+                AND section_name <> 'Sin clasificar'
+                AND start_date::time <= $2::time
+                AND finish_date::time >= $2::time
+                LIMIT 1
+                `,
+                [eventId, photoTime]
+            );
 
-        sectionId = sectionResult.rows[0]?.section_id ?? null;
+            if (sectionResult.rows.length === 0) {
+                // Tenemos hora, pero ninguna sección coincide
+                const fallbackResult = await pool.query(
+                    `
+                    SELECT section_id
+                    FROM sections
+                    WHERE event_id = $1
+                    AND section_name = 'Sin clasificar'
+                    LIMIT 1
+                    `,
+                    [eventId]
+                );
 
-    }    catch (error) {
+                if (fallbackResult.rows.length === 0) {
+                    return new Response("Sin clasificar section not found", {
+                        status: 500,
+                    });
+                }
+
+                sectionId = fallbackResult.rows[0].section_id;
+            } else {
+                sectionId = sectionResult.rows[0].section_id;
+            }
+
+        } else {
+            // No tenemos hora: usamos "Sin clasificar"
+            const fallbackResult = await pool.query(
+                `
+                SELECT section_id
+                FROM sections
+                WHERE event_id = $1
+                AND section_name = 'Sin clasificar'
+                LIMIT 1
+                `,
+                [eventId]
+            );
+
+            if (fallbackResult.rows.length === 0) {
+                return new Response("Sin clasificar section not found", {
+                    status: 500,
+                });
+            }
+
+            sectionId = fallbackResult.rows[0].section_id;
+        }
+
+    } catch (error) {
         console.error("Error finding section:", error);
+
         return new Response("Error finding section", {
             status: 500,
         });
@@ -129,10 +205,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const content = blob.url;
 
     const result = await pool.query(
-        `INSERT INTO media (content, date, user_id, section_id, event_id)
-        VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO media (content, type, date, user_id, section_id, event_id)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *`,
-        [content, date, userId, sectionId, eventId]
+        [content, file.type, date, userId, sectionId, eventId]
     );
 
     return new Response(JSON.stringify(result.rows[0]), {

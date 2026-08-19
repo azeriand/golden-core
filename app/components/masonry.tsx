@@ -20,12 +20,12 @@ export default function Masonry({ images, sections, onZoom }: MasonryProps) {
         <section className='grid grid-cols-2 gap-2 grid-flow-row'>
             <div className='flex flex-col gap-2'>
                 {imagesOdd.map((media: Media, index) => (
-                    <Image key={index} index={index} src={media.content} likes={media.likes} mediaID={media.media_id} liked={media.liked} section_id={media.section_id} sections={sections} onZoom={() => onZoom(media)}/>
+                    <Image key={index} index={index} src={media.content} likes={media.likes} mediaID={media.media_id} type={media.type} liked={media.liked} section_id={media.section_id} sections={sections} onZoom={() => onZoom(media)}/>
                 ))}
             </div>
             <div className='flex flex-col gap-2'>
                 {imagesEven.map((media: Media, index) => (
-                    <Image key={index} index={index} src={media.content} likes={media.likes} mediaID={media.media_id} liked={media.liked} section_id={media.section_id} sections={sections} onZoom={() => onZoom(media)}/>
+                    <Image key={index} index={index} src={media.content} likes={media.likes} mediaID={media.media_id} type={media.type} liked={media.liked} section_id={media.section_id} sections={sections} onZoom={() => onZoom(media)}/>
                 ))}
             </div>
         </section>

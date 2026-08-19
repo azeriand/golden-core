@@ -14,9 +14,10 @@ import ZoomPhoto from "../components/zoom-photo";
 
 export default function Home() {
 
-  const [zoomedPhoto, setZoomedPhoto] = useState<Media | null>(null);
+  const [zoomedMedia, setZoomedMedia] = useState<Media | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
   const { fetchEvent, event, loading } = useEventStore();
   const { state } = useGlobalStore();
   const { user } = useAuthStore();
@@ -27,8 +28,34 @@ export default function Home() {
     fetchEvent(slug);
   }, [fetchEvent, slug]);
 
+  // Handle visibility change to prevent iOS freeze when returning from lock screen.
+  // iOS pauses JS and compositing when the phone is locked. On resume, backdrop-filter
+  // elements and stale IntersectionObserver callbacks can deadlock the compositor.
+  // We force a layout recalculation on resume to kick the rendering pipeline back to life.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        // Force a style recalculation to unfreeze iOS compositor
+        document.body.style.opacity = "0.999";
+        requestAnimationFrame(() => {
+          document.body.style.opacity = "1";
+        });
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
   useEffect(() => {
     if (!headerRef.current) return;
+
+    // Disconnect previous observer if it exists
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -39,12 +66,14 @@ export default function Home() {
       }
     );
 
+    observerRef.current = observer;
     observer.observe(headerRef.current);
 
     return () => {
       observer.disconnect();
+      observerRef.current = null;
     };
-  }, [loading, event]);
+  }, [loading]);
 
   if (loading) {
     return <span className="loader"></span>;
@@ -66,8 +95,8 @@ export default function Home() {
 
   return (
     <main className="flex flex-col align-items-center w-full gap-y-4">
-      {zoomedPhoto && ( 
-        <ZoomPhoto src={zoomedPhoto.content} mediaID={zoomedPhoto.media_id} onClose={() => setZoomedPhoto(null)} />
+      {zoomedMedia && ( 
+        <ZoomPhoto src={zoomedMedia.content} likes={zoomedMedia.likes} mediaID={zoomedMedia.media_id} liked={zoomedMedia.liked} type={zoomedMedia.type} eventSlug={slug} onClose={() => setZoomedMedia(null)} />
       )}
       <div ref={headerRef}>
         <HomeTopLayout event_name={event.event_name} event_date={event.event_date} />
@@ -77,7 +106,7 @@ export default function Home() {
       {filteredSections.map((section) => (
         <div key={section.section_id}>
           <SectionHeader label={section.section_name} time={`${section.start_date}-${section.finish_date}`} />
-          <Masonry images={section.media} sections={event.sections} onZoom={(media) => setZoomedPhoto(media)} />
+          <Masonry images={section.media} sections={event.sections} onZoom={(media) => setZoomedMedia(media)} />
         </div>
       ))}
     </main>
