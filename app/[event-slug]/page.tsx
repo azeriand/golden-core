@@ -14,7 +14,7 @@ import ZoomPhoto from "../components/zoom-photo";
 
 export default function Home() {
 
-  const [zoomedPhoto, setZoomedPhoto] = useState<Media | null>(null);
+  const [zoomedMedia, setZoomedMedia] = useState<Media | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -95,8 +95,8 @@ export default function Home() {
 
   return (
     <main className="flex flex-col align-items-center w-full gap-y-4">
-      {zoomedPhoto && ( 
-        <ZoomPhoto src={zoomedPhoto.content} likes={zoomedPhoto.likes} mediaID={zoomedPhoto.media_id} liked={zoomedPhoto.liked} onClose={() => setZoomedPhoto(null)} />
+      {zoomedMedia && ( 
+        <ZoomPhoto src={zoomedMedia.content} likes={zoomedMedia.likes} mediaID={zoomedMedia.media_id} liked={zoomedMedia.liked} type={zoomedMedia.type} eventSlug={slug} onClose={() => setZoomedMedia(null)} />
       )}
       <div ref={headerRef}>
         <HomeTopLayout event_name={event.event_name} event_date={event.event_date} />
@@ -106,7 +106,7 @@ export default function Home() {
       {filteredSections.map((section) => (
         <div key={section.section_id}>
           <SectionHeader label={section.section_name} time={`${section.start_date}-${section.finish_date}`} />
-          <Masonry images={section.media} sections={event.sections} onZoom={(media) => setZoomedPhoto(media)} />
+          <Masonry images={section.media} sections={event.sections} onZoom={(media) => setZoomedMedia(media)} />
         </div>
       ))}
     </main>
