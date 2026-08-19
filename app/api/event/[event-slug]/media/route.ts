@@ -6,6 +6,18 @@ import { cookies } from 'next/headers'
 import { put } from "@vercel/blob";
 import exifr from 'exifr';
 
+const ACCEPTED_MIME_TYPES = new Set([
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/heic',
+    'video/mp4',
+    'video/quicktime',
+    'video/webm',
+]);
+
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+
 export async function POST(request: NextRequest, { params }: { params: Promise<{ "event-slug": string }> }) {
     const { "event-slug": eventSlug } = await params;
     const cookieStore = await cookies()
@@ -15,25 +27,26 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const file = formData.get("file");
     const date = formData.get("date") as string;
 
-    const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB
-    
     if (!(file instanceof File)) {
         return new Response("File missing", {
             status: 400,
         });
     }
-    
+
     const isImage = file.type.startsWith("image/");
     const isVideo = file.type.startsWith("video/");
 
-    if (!isImage && !isVideo) {
-        return new Response("Invalid media type", {
-            status: 400,
-        });
+    // MIME type validation
+    if (!ACCEPTED_MIME_TYPES.has(file.type)) {
+        return new Response(
+            `Unsupported file type: ${file.type}. Accepted: JPEG, PNG, WEBP, HEIC, MP4, MOV, WEBM`,
+            { status: 400 }
+        );
     }
 
+    // File size validation
     if (file.size > MAX_FILE_SIZE) {
-        return new Response("File too large", {
+        return new Response("File size exceeds 100 MB limit", {
             status: 400,
         });
     }
@@ -130,7 +143,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     try {
         if (photoTime !== null) {
-            // Tenemos una hora: intentamos encontrar la sección correspondiente
             const sectionResult = await pool.query(
                 `
                 SELECT section_id
@@ -145,7 +157,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             );
 
             if (sectionResult.rows.length === 0) {
-                // Tenemos hora, pero ninguna sección coincide
                 const fallbackResult = await pool.query(
                     `
                     SELECT section_id
@@ -169,7 +180,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             }
 
         } else {
-            // No tenemos hora: usamos "Sin clasificar"
             const fallbackResult = await pool.query(
                 `
                 SELECT section_id
