@@ -27,7 +27,7 @@ export default function RootLayout({
           <main className="flex flex-1 pt-4 py-4 pb-28">
             {children}
           </main>
-          <Navbar/>
+          {authenticated && <Navbar/>}
         </div>
       </body>
     </html>
