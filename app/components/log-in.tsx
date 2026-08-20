@@ -18,7 +18,7 @@ export default function LogIn({ onSignup }: Props) {
     return (
         <>
             <p className='text-sm text-gray-600'>Iniciar sesión</p>
-            <div className="flex flex-col gap-y-2 w-full max-w-48 my-4">
+            <div className="flex flex-col gap-y-2 w-full max-w-56 my-4">
                 <Input appearance='mate' color='amber' intensity={700} placeholder='Email' type='email' value={email} onChange={setEmail as any} className={fieldClass('email')} style={fieldStyle('email')} />
                 <Input appearance='mate' color='amber' intensity={700} placeholder='Contraseña' type='password' value={password} onChange={setPassword as any} className={fieldClass('password')} style={fieldStyle('password')} />
                 {error && <p className='text-red-400 text-xs text-center'>{error}</p>}
