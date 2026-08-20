@@ -1,6 +1,5 @@
 "use client"
 import HomeTopLayout from "../components/home-top-layout";
-import Topbar from "../components/topbar";
 import UserNavbar from "../components/user-navbar";
 import SectionHeader from "../components/section-header";
 import Masonry from "../components/masonry";
@@ -8,16 +7,13 @@ import useEventStore from "../src/stores/event.store";
 import useGlobalStore from "../src/stores/global.store";
 import useAuthStore from "../src/stores/auth.store";
 import { Media } from "../dto/media";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from 'next/navigation'
 import ZoomPhoto from "../components/zoom-photo";
 
 export default function Home() {
 
   const [zoomedMedia, setZoomedMedia] = useState<Media | null>(null);
-  const [scrolled, setScrolled] = useState(false);
-  const headerRef = useRef<HTMLDivElement>(null);
-  const observerRef = useRef<IntersectionObserver | null>(null);
   const { fetchEvent, event, loading } = useEventStore();
   const { state } = useGlobalStore();
   const { user } = useAuthStore();
@@ -51,31 +47,7 @@ export default function Home() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!headerRef.current) return;
 
-    // Disconnect previous observer if it exists
-    if (observerRef.current) {
-      observerRef.current.disconnect();
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setScrolled(!entry.isIntersecting);
-      },
-      {
-        threshold: 0,
-      }
-    );
-
-    observerRef.current = observer;
-    observer.observe(headerRef.current);
-
-    return () => {
-      observer.disconnect();
-      observerRef.current = null;
-    };
-  }, [loading]);
 
   if (loading) {
     return <span className="loader"></span>;
@@ -96,17 +68,14 @@ export default function Home() {
   })).filter((section) => section.media.length > 0);
 
   return (
-    <main className="flex flex-col align-items-center w-full gap-y-4">
+    <main className="flex flex-col items-center w-full gap-y-4">
       {zoomedMedia && ( 
         <ZoomPhoto src={zoomedMedia.content} likes={zoomedMedia.likes} mediaID={zoomedMedia.media_id} liked={zoomedMedia.liked} type={zoomedMedia.type} eventSlug={slug} onClose={() => setZoomedMedia(null)} />
       )}
-      <div ref={headerRef}>
-        <HomeTopLayout event_name={event.event_name} event_date={event.event_date} />
-      </div>
-      {scrolled && <Topbar event_name={event.event_name} />}
+      <HomeTopLayout event_name={event.event_name} event_date={event.event_date} />
       {state !== "home" && <UserNavbar />}
       {filteredSections.map((section) => (
-        <div key={section.section_id} className="pt-4 flex flex-col gap-y-2">
+        <div key={section.section_id} className="pt-4 flex flex-col gap-y-2 w-full">
           <SectionHeader label={section.section_name} time={`${section.start_date}-${section.finish_date}`} />
           <Masonry images={section.media} sections={event.sections} onZoom={(media) => setZoomedMedia(media)} />
         </div>
