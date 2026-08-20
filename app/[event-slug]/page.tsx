@@ -25,8 +25,10 @@ export default function Home() {
   const slug = params["event-slug"];
 
   useEffect(() => {
+    if (!user) return;
+
     fetchEvent(slug);
-  }, [fetchEvent, slug]);
+  }, [fetchEvent, slug, user]);
 
   // Handle visibility change to prevent iOS freeze when returning from lock screen.
   // iOS pauses JS and compositing when the phone is locked. On resume, backdrop-filter
