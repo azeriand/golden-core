@@ -12,9 +12,9 @@ export default function AuthPopup() {
 
     return (
         <div className="fixed inset-0 z-70 flex items-center justify-center bg-white/20 p-4" style={{ backdropFilter: "blur(5px)", WebkitBackdropFilter: "blur(5px)", willChange: "transform" }}>
-            <Card appearance="mate" color="white" intensity={200} className="flex flex-col gap-y-2 items-center w-full max-w-xs px-6" style={{ boxShadow: "0 20px 40px rgba(0, 0, 0, 0.35)" }}>
+            <Card appearance="mate" color="white" intensity={200} className="flex flex-col gap-y-2 items-center max-w-sm" style={{ boxShadow: "0 20px 40px rgba(0, 0, 0, 0.35)", padding: '3.5rem' }}>
                     
-                <h1 className='text-gray-600 text-lg'>Golden·Core</h1>
+                <h1 className='text-amber-700! font-semibold' style={{ fontSize: '1.75rem' }}>Golden·Core</h1>
 
                 {mode === "signup" ? (
                     <SignUp onLogin={() => setMode("login")} />
