@@ -6,6 +6,7 @@ import { TbLogout } from "react-icons/tb";
 import { Great_Vibes } from 'next/font/google'
 import useAuthStore from "../src/stores/auth.store";
 import useMediaUiStore from "../src/stores/media-ui.store";
+import useEventStore from "../src/stores/event.store";
 import { useEffect, useRef, useState } from "react";
 
 const greatVibes = Great_Vibes({
@@ -17,6 +18,7 @@ export default function HomeTopLayout({ event_name, event_date }: { event_name: 
 
     const { logout } = useAuthStore();
     const { downloadSelected, downloading, selectedIds, isSelectionMode, toggleSelectedMode } = useMediaUiStore();
+    const { shareEvent } = useEventStore()
     const [isStuck, setIsStuck] = useState(false);
     const imgRef = useRef<HTMLImageElement>(null);
 
@@ -73,7 +75,7 @@ export default function HomeTopLayout({ event_name, event_date }: { event_name: 
                                 {downloading ? "Descargando..." : "Descargar"}
                             </Button>
                         )}
-                        <Button appearance='mate' color="purple" intensity={700} size='sm' className="aspect-square">
+                        <Button appearance='mate' color="purple" intensity={700} size='sm' className="aspect-square" onClick={shareEvent}>
                             <FaShare size={14} />
                         </Button>
                         {!isSelectionMode && (
@@ -96,8 +98,8 @@ export default function HomeTopLayout({ event_name, event_date }: { event_name: 
                         <p className={`text-2xl font-bold ${greatVibes.className} text-purple-500`}>{event_date}</p>
                     </div>
                     <div className='flex w-full justify-between items-center'>
-                        <Button appearance='mate' size="sm" color="amber" intensity={700} className="rounded-md">
-                            <FaShare size={14} className="inline mr-1" /> Compartir enlace
+                        <Button appearance='mate' size="sm" color="amber" intensity={700} className="rounded-md" onClick={shareEvent}>
+                            <FaShare size={14} className="inline mr-1"/> Compartir enlace
                         </Button>
                         <div className="flex gap-x-2 items-center">
                             {isSelectionMode && selectedIds.size > 0 && (

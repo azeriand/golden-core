@@ -8,6 +8,7 @@ interface EventStore {
     loading: boolean;
     fetchEvent: (event_slug: string) => Promise<void>;
     toggleLike: (mediaId: number) => Promise<void>;
+    shareEvent: () => Promise<void>;
 }
 
 const useEventStore = create<EventStore>((set, get) => ({
@@ -105,7 +106,42 @@ const useEventStore = create<EventStore>((set, get) => ({
             set({ event: previousEvent });
             console.error("Error toggling like", error);
         }
-    }
+    },
+
+    shareEvent: async () => {
+        const { event } = get();
+
+        if (!event) {
+            return;
+        }
+
+        const url = window.location.href;
+
+        try {
+            if (navigator.share) {
+                await navigator.share({
+                    title: event.event_name,
+                    text: `Mira las fotos de ${event.event_name}`,
+                    url,
+                });
+
+                return;
+            }
+
+            await navigator.clipboard.writeText(url);
+
+            alert("Enlace copiado");
+        } catch (error) {
+            if (
+                error instanceof DOMException &&
+                error.name === "AbortError"
+            ) {
+                return;
+            }
+
+            console.error("Error al compartir el evento:", error);
+        }
+    },
 
 }));
 
