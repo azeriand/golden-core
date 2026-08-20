@@ -53,7 +53,7 @@ export default function HomeTopLayout({ event_name, event_date }: { event_name: 
 
             {/* Barra: normal en flujo, fixed cuando stuck */}
             <div
-                className={`${isStuck ? 'fixed top-0 left-0 right-0 max-w-4xl mx-auto z-50 animate-slide-down' : ''} bg-white/95 backdrop-blur-md w-full px-4 py-3 transition-all duration-300 ease-in-out`}
+                className={`${isStuck ? 'fixed top-0 left-0 right-0 max-w-4xl mx-auto z-50 animate-slide-down' : ''} bg-[#FFFCF8]/95 backdrop-blur-md w-full px-4 py-3 transition-all duration-300 ease-in-out`}
             >
                 {/* Layout compacto */}
                 <div className={`flex items-center justify-between transition-all duration-300 ease-in-out ${isStuck ? 'opacity-100 translate-y-0' : 'opacity-0 h-0 overflow-hidden -translate-y-2'}`}>
