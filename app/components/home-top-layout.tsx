@@ -58,8 +58,8 @@ export default function HomeTopLayout({ event_name, event_date }: { event_name: 
                 {/* Layout compacto */}
                 <div className={`flex items-center justify-between transition-all duration-300 ease-in-out ${isStuck ? 'opacity-100 translate-y-0' : 'opacity-0 h-0 overflow-hidden -translate-y-2'}`}>
                     <div className='flex items-baseline gap-x-2'>
-                        <h1 className={`text-lg font-semibold ${greatVibes.className} text-purple-700`}>{event_name}</h1>
-                        <p className={`text-sm ${greatVibes.className} text-purple-500`}>{event_date}</p>
+                        <h1 className={`font-semibold ${greatVibes.className} text-purple-700`} style={{ fontSize: '1.85rem' }}>{event_name}</h1>
+                        <p className={`${greatVibes.className} text-purple-500`} style={{ fontSize: '1.25rem' }}>{event_date}</p>
                     </div>
                     <div className="flex gap-x-2 items-center">
                         {isSelectionMode && selectedIds.size > 0 && (
