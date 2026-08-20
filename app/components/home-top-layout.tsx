@@ -46,7 +46,7 @@ export default function HomeTopLayout({ event_name, event_date }: { event_name: 
             <img
                 ref={imgRef}
                 src="https://img.magnific.com/free-photo/golden-wedding-rings-white-rose-from-wedding-bouquet_8353-10467.jpg?semt=ais_hybrid&w=740&q=80"
-                alt="Default wedding image"
+                alt="Imagen del evento"
                 className="w-full h-auto rounded-t-2xl"
             />
 

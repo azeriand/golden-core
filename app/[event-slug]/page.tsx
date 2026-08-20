@@ -54,7 +54,7 @@ export default function Home() {
   }
 
   if (!event) {
-    return <p>Event not found.</p>;
+    return <p>Evento no encontrado.</p>;
   }
 
 

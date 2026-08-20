@@ -52,7 +52,7 @@ export default function ZoomPhoto({ src, likes: initialLikes, mediaID, liked: in
             ) : (
                 <img
                     src={src}
-                    alt="Zoomed Image"
+                    alt="Imagen ampliada"
                     className="w-full flex-1 min-h-0 object-contain rounded-md"
                 />
             )}

@@ -20,7 +20,7 @@ export default function RootLayout({
   }, []);
 
   return (
-    <html lang="en">
+    <html lang="es">
       <body className="min-h-screen">
         {!loading && !authenticated && (<AuthPopup />)}
         <div className='mx-auto flex min-h-screen w-full max-w-4xl flex-col'>

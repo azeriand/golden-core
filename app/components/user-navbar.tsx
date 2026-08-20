@@ -12,8 +12,8 @@ export default function UserNavbar() {
 
     return(
         <nav className="grid grid-cols-12 gap-x-4 items-center justify-center w-full relative">
-            <Button appearance='ghost' className="text-amber-700! col-span-6" onClick={() => changeState("myPhotos")}><TbPhotoUp size={20}/> My photos</Button>
-            <Button appearance='ghost' className="text-amber-700! col-span-6" onClick={() => changeState("favPhotos")}><TbPhotoHeart size={20}/> Liked</Button>
+            <Button appearance='ghost' className="text-amber-700! col-span-6" onClick={() => changeState("myPhotos")}><TbPhotoUp size={20}/> Mis fotos</Button>
+            <Button appearance='ghost' className="text-amber-700! col-span-6" onClick={() => changeState("favPhotos")}><TbPhotoHeart size={20}/> Favoritas</Button>
             <div className={selectedBarClassname} style={{ borderBottom: '1px solid black', transform: `translateX(${state === 'favPhotos' ? '100%' : '0'})` }}/>
         </nav>
     )

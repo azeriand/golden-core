@@ -31,7 +31,7 @@ const useSignUpStore =  create<User>((set, get) => ({
         const { email, username, password, confirmPassword } = get();
 
         if (password !== confirmPassword) {
-            alert("Passwords do not match");
+            alert("Las contraseñas no coinciden");
             return;
         }
 

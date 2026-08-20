@@ -42,7 +42,7 @@ export default function Navbar() {
                 if (files.length === 0) return;
 
                 if (files.length > 20) {
-                    setFileError("You can select up to 20 files at a time.");
+                    setFileError("Puedes seleccionar hasta 20 archivos a la vez.");
                     e.target.value = "";
                     return;
                 }
