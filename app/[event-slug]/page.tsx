@@ -25,8 +25,10 @@ export default function Home() {
   const slug = params["event-slug"];
 
   useEffect(() => {
+    if (!user) return;
+
     fetchEvent(slug);
-  }, [fetchEvent, slug]);
+  }, [fetchEvent, slug, user]);
 
   // Handle visibility change to prevent iOS freeze when returning from lock screen.
   // iOS pauses JS and compositing when the phone is locked. On resume, backdrop-filter
@@ -104,7 +106,7 @@ export default function Home() {
       {scrolled && <Topbar event_name={event.event_name} />}
       {state !== "home" && <UserNavbar />}
       {filteredSections.map((section) => (
-        <div key={section.section_id}>
+        <div key={section.section_id} className="pt-4 flex flex-col gap-y-2">
           <SectionHeader label={section.section_name} time={`${section.start_date}-${section.finish_date}`} />
           <Masonry images={section.media} sections={event.sections} onZoom={(media) => setZoomedMedia(media)} />
         </div>
