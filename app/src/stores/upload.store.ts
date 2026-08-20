@@ -103,7 +103,7 @@ const useUploadStore = create<UploadStore>((set, get) => ({
           const eventState = useEventStore.getState();
           if (eventState.event) {
             const sections = eventState.event.sections.map((section) => {
-              if (section.section_id === media.section_id) {
+              if (String(section.section_id) === String(media.section_id)) {
                 return { ...section, media: [...section.media, media] };
               }
               return section;
@@ -193,7 +193,7 @@ const useUploadStore = create<UploadStore>((set, get) => ({
         const eventState = useEventStore.getState();
         if (eventState.event) {
           const sections = eventState.event.sections.map((section) => {
-            if (section.section_id === media.section_id) {
+            if (String(section.section_id) === String(media.section_id)) {
               return { ...section, media: [...section.media, media] };
             }
             return section;
