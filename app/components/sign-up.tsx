@@ -16,7 +16,7 @@ export default function SignUp({ onLogin }: Props) {
             <Input appearance='mate' color='purple' intensity={500} placeholder='Nombre de usuario' type='text' value={username} onChange={setUsername as any} className='text-gray-600' />
             <Input appearance='mate' color='purple' intensity={500} placeholder='Contraseña' type='password' value={password} onChange={setPassword as any} className='text-gray-600' />
             <Input appearance='mate' color='purple' intensity={500} placeholder='Confirmar contraseña' type='password' value={confirmPassword} onChange={setConfirmPassword as any} className='text-gray-600' />
-            <Button appearance='mate' color='purple' intensity={700} className='text-gray-600' onClick={register} disabled={loading}>{loading ? 'Registrando...' : 'Registrarse'}</Button>
+            <Button appearance='mate' color='purple' intensity={700} className='text-gray-600' onClick={loading ? undefined : register}>{loading ? 'Registrando...' : 'Registrarse'}</Button>
             <Button appearance='mate' color='gray' intensity={700} className='text-gray-600' onClick={onLogin}>¿Ya tienes cuenta? Inicia sesión</Button>
         </>
     )
