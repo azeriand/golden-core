@@ -34,7 +34,7 @@ export default function Navbar() {
     const personalFolderButtonProps = state === "myPhotos" || state === "favPhotos" ? selectedButtonProps : defaultButtonProps;
 
     return(
-        <Card noPadding appearance='mate' color='white' className="flex justify-center gap-x-3 fixed bottom-4 left-4 right-4 border-t p-4 rounded-xl bg-white/95! backdrop-blur-md w-full" style={{ willChange: "transform" }}>
+        <Card noPadding appearance='mate' color='white' className="flex justify-center gap-x-3 fixed bottom-4 left-4 right-4 border-t p-4 rounded-xl bg-white/95! backdrop-blur-md w-full z-[100]" style={{ willChange: "transform" }}>
             <Button appearance='mate' icon={<AiFillHome size={32}/>} color="purple" className="rounded-full px-9!" onClick={() => updateState("home")} {...homeButtonProps}/>
             <Button appearance='mate' color="purple" intensity={500} className="rounded-full px-9!" icon={<TbPhotoPlus size={36}/>} onClick={() => fileInputRef.current?.click()}/>
             <input ref={fileInputRef} type="file" accept="image/*, video/*" multiple className="hidden" onChange={(e) => {
