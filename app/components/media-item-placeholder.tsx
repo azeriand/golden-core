@@ -53,7 +53,7 @@ export default function MediaItemPlaceholder({
       {showAsImage ? (
         <img
           src={mediaSrc}
-          alt="Upload preview"
+          alt="Vista previa de subida"
           className="w-full h-auto rounded-lg"
           style={{
             filter: isUploading ? "blur(10px)" : "none",
@@ -134,7 +134,7 @@ export default function MediaItemPlaceholder({
           </svg>
           {isExhausted && (
             <p className="absolute bottom-2 text-white text-xs text-center px-2">
-              Tap to dismiss
+              Toca para descartar
             </p>
           )}
         </div>

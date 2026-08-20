@@ -40,7 +40,7 @@ export default function MediaItem({index, src, type, likes, liked, mediaID, sect
             ) : (
                 <img
                     src={src}
-                    alt={`Masonry Image ${index}`}
+                    alt={`Imagen ${index}`}
                     className="w-full h-auto rounded-lg cursor-pointer"
                     onClick={handleClick}
                 />

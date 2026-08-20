@@ -20,14 +20,14 @@ export default function RootLayout({
   }, []);
 
   return (
-    <html lang="en">
+    <html lang="es">
       <body className="min-h-screen">
         {!loading && !authenticated && (<AuthPopup />)}
         <div className='mx-auto flex min-h-screen w-full max-w-4xl flex-col'>
           <main className="flex flex-1 pt-4 py-4 pb-28">
             {children}
           </main>
-          <Navbar/>
+          {authenticated && <Navbar/>}
         </div>
       </body>
     </html>

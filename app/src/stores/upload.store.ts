@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { Media } from "@/app/dto/media";
 import { uploadFile } from "@/app/upload-xhr";
 import useGlobalStore from "./global.store";
+import useEventStore from "./event.store";
 
 export interface UploadItem {
   id: string;
@@ -98,6 +99,22 @@ const useUploadStore = create<UploadStore>((set, get) => ({
                 : i
             ),
           }));
+          // Add the uploaded media to the event store
+          const eventState = useEventStore.getState();
+          if (eventState.event) {
+            const sections = eventState.event.sections.map((section) => {
+              if (String(section.section_id) === String(media.section_id)) {
+                return { ...section, media: [...section.media, media] };
+              }
+              return section;
+            });
+            // If media has no section or section not found, add to first section
+            const added = sections.some((s) => s.media.includes(media));
+            if (!added && sections.length > 0) {
+              sections[0] = { ...sections[0], media: [...sections[0].media, media] };
+            }
+            useEventStore.setState({ event: { ...eventState.event, sections } });
+          }
           // Process next queued items
           get().processQueue();
         })
@@ -172,6 +189,21 @@ const useUploadStore = create<UploadStore>((set, get) => ({
               : i
           ),
         }));
+        // Add the uploaded media to the event store
+        const eventState = useEventStore.getState();
+        if (eventState.event) {
+          const sections = eventState.event.sections.map((section) => {
+            if (String(section.section_id) === String(media.section_id)) {
+              return { ...section, media: [...section.media, media] };
+            }
+            return section;
+          });
+          const added = sections.some((s) => s.media.includes(media));
+          if (!added && sections.length > 0) {
+            sections[0] = { ...sections[0], media: [...sections[0].media, media] };
+          }
+          useEventStore.setState({ event: { ...eventState.event, sections } });
+        }
         get().processQueue();
       })
       .catch((error: Error) => {

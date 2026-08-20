@@ -40,6 +40,9 @@ const useAuthStore = create<AuthStore>((set) => ({
                 authenticated: false,
                 loading: false
             });
+            // Limpiar el store del evento
+            const { default: useEventStore } = await import('./event.store');
+            useEventStore.setState({ event: null, loading: true });
         }
     },
 

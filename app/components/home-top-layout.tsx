@@ -46,7 +46,7 @@ export default function HomeTopLayout({ event_name, event_date }: { event_name: 
             <img
                 ref={imgRef}
                 src="https://img.magnific.com/free-photo/golden-wedding-rings-white-rose-from-wedding-bouquet_8353-10467.jpg?semt=ais_hybrid&w=740&q=80"
-                alt="Default wedding image"
+                alt="Imagen del evento"
                 className="w-full h-auto rounded-t-2xl"
             />
 
@@ -63,9 +63,9 @@ export default function HomeTopLayout({ event_name, event_date }: { event_name: 
                         <h1 className={`font-semibold ${greatVibes.className} text-purple-700`} style={{ fontSize: '1.85rem' }}>{event_name}</h1>
                         <p className={`${greatVibes.className} text-purple-500`} style={{ fontSize: '1.25rem' }}>{event_date}</p>
                     </div>
-                    <div className="flex gap-x-2 items-center">
+                    <div className="flex gap-x-2 items-stretch">
                         {isSelectionMode && selectedIds.size > 0 && (
-                            <span className="text-sm">{selectedIds.size} seleccionadas</span>
+                            <span className="text-sm flex items-center" style={{ color: '#5A463A' }}>{selectedIds.size} seleccionadas</span>
                         )}
                         <Button appearance='mate' color="purple" intensity={500} size='sm' onClick={toggleSelectedMode}>
                             {isSelectionMode ? "Cancelar" : "Seleccionar"}
@@ -75,15 +75,15 @@ export default function HomeTopLayout({ event_name, event_date }: { event_name: 
                                 {downloading ? "Descargando..." : "Descargar"}
                             </Button>
                         )}
-                        <Button appearance='mate' color="purple" intensity={700} size='sm' className="aspect-square" onClick={shareEvent}>
+                        <Button appearance='mate' color="purple" intensity={700} size='sm' className="aspect-square!" onClick={shareEvent}>
                             <FaShare size={14} />
                         </Button>
                         {!isSelectionMode && (
                             <>
-                                <Button appearance='mate' color="purple" intensity={700} size='sm' className="aspect-square">
+                                {/* <Button appearance='mate' color="purple" intensity={700} size='sm' className="aspect-square h-8!">
                                     <IoSettingsSharp size={14} />
-                                </Button>
-                                <Button appearance='outlined' color="amber" intensity={700} size='sm' className="aspect-square" style={{ color: '#5A463A' }} onClick={logout}>
+                                </Button> */}
+                                <Button appearance='outlined' color="amber" intensity={700} size='sm' className="aspect-square!" style={{ color: '#5A463A' }} onClick={logout}>
                                     <TbLogout size={14} />
                                 </Button>
                             </>
@@ -97,13 +97,13 @@ export default function HomeTopLayout({ event_name, event_date }: { event_name: 
                         <h1 className={`text-2xl font-semibold ${greatVibes.className} text-purple-700`}>{event_name}</h1>
                         <p className={`text-2xl font-bold ${greatVibes.className} text-purple-500`}>{event_date}</p>
                     </div>
-                    <div className='flex w-full justify-between items-center'>
+                    <div className='flex w-full justify-between items-stretch'>
                         <Button appearance='mate' size="sm" color="amber" intensity={700} className="rounded-md" onClick={shareEvent}>
                             <FaShare size={14} className="inline mr-1"/> Compartir enlace
                         </Button>
-                        <div className="flex gap-x-2 items-center">
+                        <div className="flex gap-x-2 items-stretch">
                             {isSelectionMode && selectedIds.size > 0 && (
-                                <span className="text-sm">{selectedIds.size} seleccionadas</span>
+                                <span className="text-sm flex items-center" style={{ color: '#5A463A' }}>{selectedIds.size} seleccionadas</span>
                             )}
                             <Button appearance='mate' color="purple" intensity={500} size='sm' onClick={toggleSelectedMode}>
                                 {isSelectionMode ? "Cancelar" : "Seleccionar"}
@@ -115,10 +115,10 @@ export default function HomeTopLayout({ event_name, event_date }: { event_name: 
                             )}
                             {!isSelectionMode && (
                                 <>
-                                    <Button appearance='mate' color="purple" intensity={700} size='sm' className="aspect-square">
+                                    {/* <Button appearance='mate' color="purple" intensity={700} size='sm' className="aspect-square h-8!">
                                         <IoSettingsSharp size={14} />
-                                    </Button>
-                                    <Button appearance='outlined' color="amber" intensity={700} size='sm' className="aspect-square" style={{ color: '#5A463A' }} onClick={logout}>
+                                    </Button> */}
+                                    <Button appearance='outlined' color="amber" intensity={700} size='sm' className="aspect-square!" style={{ color: '#5A463A' }} onClick={logout}>
                                         <TbLogout size={14} />
                                     </Button>
                                 </>
