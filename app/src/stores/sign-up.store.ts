@@ -7,6 +7,7 @@ interface User {
     password: string;
     username: string;
     confirmPassword: string;
+    loading: boolean;
     setEmail: (email: string) => void;
     setPassword: (password: string) => void;
     setUsername: (username: string) => void;
@@ -20,6 +21,7 @@ const useSignUpStore =  create<User>((set, get) => ({
     password: "",
     username: "",
     confirmPassword: "",
+    loading: false,
     setEmail: (email: string) => set({ email }),
     setPassword: (password: string) => set({ password }),
     setUsername: (username: string) => set({ username }),
@@ -34,6 +36,8 @@ const useSignUpStore =  create<User>((set, get) => ({
         }
 
         const defaultEventId = 1;
+
+        set({ loading: true });
 
         try {
             const response = await axios.post('/api/me', {
@@ -54,6 +58,8 @@ const useSignUpStore =  create<User>((set, get) => ({
 
         } catch (error) {
             console.error("Error en el registro:", error);
+        } finally {
+            set({ loading: false });
         }
 
     }

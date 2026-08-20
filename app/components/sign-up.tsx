@@ -7,7 +7,7 @@ import useSignUpStore from '../src/stores/sign-up.store'
     }
 
 export default function SignUp({ onLogin }: Props) {
-    const { email, password, username, confirmPassword, setEmail, setPassword, setUsername, setConfirmPassword, register} = useSignUpStore();
+    const { email, password, username, confirmPassword, loading, setEmail, setPassword, setUsername, setConfirmPassword, register} = useSignUpStore();
 
     return (
         <>
@@ -16,7 +16,7 @@ export default function SignUp({ onLogin }: Props) {
             <Input appearance='mate' color='purple' intensity={500} placeholder='Username' type='text' value={username} onChange={setUsername as any} className='text-gray-600' />
             <Input appearance='mate' color='purple' intensity={500} placeholder='Password' type='password' value={password} onChange={setPassword as any} className='text-gray-600' />
             <Input appearance='mate' color='purple' intensity={500} placeholder='Confirm Password' type='password' value={confirmPassword} onChange={setConfirmPassword as any} className='text-gray-600' />
-            <Button appearance='mate' color='purple' intensity={700} className='text-gray-600' onClick={register}>Sign up</Button>
+            <Button appearance='mate' color='purple' intensity={700} className='text-gray-600' onClick={register} disabled={loading}>{loading ? 'Signing up...' : 'Sign up'}</Button>
             <Button appearance='mate' color='gray' intensity={700} className='text-gray-600' onClick={onLogin}>Already have an account? Log in</Button>
         </>
     )
