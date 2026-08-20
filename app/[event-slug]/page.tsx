@@ -75,7 +75,7 @@ export default function Home() {
       <HomeTopLayout event_name={event.event_name} event_date={event.event_date} />
       {state !== "home" && <UserNavbar />}
       {filteredSections.map((section) => (
-        <div key={section.section_id} className="pt-4 flex flex-col gap-y-2">
+        <div key={section.section_id} className="pt-4 flex flex-col gap-y-2 w-full">
           <SectionHeader label={section.section_name} time={`${section.start_date}-${section.finish_date}`} />
           <Masonry images={section.media} sections={event.sections} onZoom={(media) => setZoomedMedia(media)} />
         </div>
