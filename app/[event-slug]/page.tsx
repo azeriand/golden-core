@@ -72,7 +72,7 @@ export default function Home() {
       {zoomedMedia && ( 
         <ZoomPhoto src={zoomedMedia.content} likes={zoomedMedia.likes} mediaID={zoomedMedia.media_id} liked={zoomedMedia.liked} type={zoomedMedia.type} eventSlug={slug} onClose={() => setZoomedMedia(null)} />
       )}
-      <HomeTopLayout event_name={event.event_name} event_date={event.event_date} />
+      <HomeTopLayout event_name={event.event_name} event_date={event.event_date} visibleMediaIds={filteredSections.flatMap((s) => s.media.map((m) => m.media_id))} />
       {state !== "home" && <UserNavbar />}
       {filteredSections.map((section) => (
         <div key={section.section_id} className="pt-4 flex flex-col gap-y-2 w-full">
