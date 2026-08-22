@@ -55,7 +55,7 @@ const useEventStore = create<EventStore>((set, get) => ({
                     return {
                         ...media,
                         liked: !media.liked,
-                        likes: media.liked ? media.likes - 1 : media.likes + 1,
+                        likes: media.liked ? Number(media.likes) - 1 : Number(media.likes) + 1,
                     };
                 }
                 return media;

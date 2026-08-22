@@ -5,7 +5,6 @@ import { MdOutlineRadioButtonUnchecked } from "react-icons/md";
 import { MdOutlineCheckCircleOutline } from "react-icons/md";
 
 export default function MediaItem({index, src, type, likes, liked, mediaID, section_id, sections, onZoom}: {index: number, src: string, type: string | null, likes: number, liked: boolean, mediaID: number, section_id: number|null, sections: Section[], onZoom: () => void}) {
-
     const { isSelectionMode, selectedIds, toggleSelected } = useMediaUiStore();
 
     const selected = selectedIds.has(mediaID);
@@ -20,7 +19,7 @@ export default function MediaItem({index, src, type, likes, liked, mediaID, sect
     };
 
     return(
-        <article key={index} className='w-full h-auto rounded-lg relative'>
+        <article key={index} className='w-full h-auto relative'>
             
             { isSelectionMode && (
                 <div className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-purple-600 text-white flex items-center justify-center">
@@ -34,14 +33,14 @@ export default function MediaItem({index, src, type, likes, liked, mediaID, sect
                     controls
                     playsInline
                     preload="metadata"
-                    className="w-full h-auto rounded-lg cursor-pointer"
+                    className="w-full h-auto cursor-pointer"
                     onClick={handleClick}
                 />
             ) : (
                 <img
                     src={src}
                     alt={`Imagen ${index}`}
-                    className="w-full h-auto rounded-lg cursor-pointer"
+                    className="w-full h-auto cursor-pointer"
                     onClick={handleClick}
                 />
             )}
