@@ -11,6 +11,8 @@ interface MediaUiState {
 
   toggleSelected: (id: number) => void;
   toggleSelectedMode : () => void;
+  selectAll: (ids: number[]) => void;
+  deselectAll: () => void;
   toggleLiked: (id: number) => void;
   setUploading: (id: number, isUploading: boolean) => void;
   setClicked: (id: number | null) => void;
@@ -44,6 +46,14 @@ const useMediaUiStore = create<MediaUiState>((set, get) => ({
     isSelectionMode: !state.isSelectionMode,
     selectedIds: state.isSelectionMode ? new Set<number>() : state.selectedIds,
   })),
+
+  selectAll: (ids: number[]) => set({
+    selectedIds: new Set(ids),
+  }),
+
+  deselectAll: () => set({
+    selectedIds: new Set<number>(),
+  }),
 
   toggleLiked: (id: number) =>
     set((state) => {

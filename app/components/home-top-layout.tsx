@@ -14,13 +14,23 @@ const greatVibes = Great_Vibes({
   weight: '400',
 })
 
-export default function HomeTopLayout({ event_name, event_date }: { event_name: string, event_date: string }) {
+export default function HomeTopLayout({ event_name, event_date, visibleMediaIds }: { event_name: string, event_date: string, visibleMediaIds: number[] }) {
 
     const { logout } = useAuthStore();
-    const { downloadSelected, downloading, selectedIds, isSelectionMode, toggleSelectedMode } = useMediaUiStore();
+    const { downloadSelected, downloading, selectedIds, isSelectionMode, toggleSelectedMode, selectAll, deselectAll } = useMediaUiStore();
     const { shareEvent } = useEventStore()
     const [isStuck, setIsStuck] = useState(false);
     const imgRef = useRef<HTMLImageElement>(null);
+
+    const allSelected = visibleMediaIds.length > 0 && visibleMediaIds.every((id) => selectedIds.has(id));
+
+    const handleSelectAllToggle = () => {
+        if (allSelected) {
+            deselectAll();
+        } else {
+            selectAll(visibleMediaIds);
+        }
+    };
 
     // Observar la imagen: cuando desaparece del viewport → stuck
     useEffect(() => {
@@ -65,15 +75,25 @@ export default function HomeTopLayout({ event_name, event_date }: { event_name: 
                     </div>
                     <div className="flex gap-x-2 items-stretch">
                         {isSelectionMode && selectedIds.size > 0 && (
-                            <span className="text-sm flex items-center" style={{ color: '#5A463A' }}>{selectedIds.size} seleccionadas</span>
+                            <span className="text-xs flex items-center" style={{ color: '#5A463A' }}>{selectedIds.size} seleccionadas</span>
                         )}
-                        <Button appearance='mate' color="purple" intensity={500} size='sm' onClick={toggleSelectedMode}>
-                            {isSelectionMode ? "Cancelar" : "Seleccionar"}
-                        </Button>
-                        {isSelectionMode && (
-                            <Button appearance='mate' color='purple' intensity={700} size='sm' onClick={handleDownload}>
-                                {downloading ? "Descargando..." : "Descargar"}
+                        {!isSelectionMode && (
+                            <Button appearance='mate' color="purple" intensity={500} size='sm' className="py-2!" onClick={toggleSelectedMode}>
+                                Seleccionar
                             </Button>
+                        )}
+                        {isSelectionMode && (
+                            <>
+                                <Button appearance='ghost' color="purple" size='sm' className="py-2!" style={{ color: '#9D7BD6' }} onClick={handleSelectAllToggle}>
+                                    {allSelected ? "Deseleccionar todo" : "Seleccionar todo"}
+                                </Button>
+                                <Button appearance='mate' color='purple' intensity={700} size='sm' className="py-2!" onClick={handleDownload}>
+                                    {downloading ? "Descargando..." : "Descargar"}
+                                </Button>
+                                <Button appearance='mate' color="purple" intensity={500} size='sm' className="py-2!" onClick={toggleSelectedMode}>
+                                    Cancelar
+                                </Button>
+                            </>
                         )}
                         <Button appearance='mate' color="purple" intensity={700} size='sm' className="aspect-square!" onClick={shareEvent}>
                             <FaShare size={14} />
@@ -101,17 +121,27 @@ export default function HomeTopLayout({ event_name, event_date }: { event_name: 
                         <Button appearance='mate' size="sm" color="amber" intensity={700} className="rounded-md" onClick={shareEvent}>
                             <FaShare size={14} className="inline mr-1"/> Compartir enlace
                         </Button>
-                        <div className="flex gap-x-2 items-stretch">
+                        <div className="flex gap-x-2 items-center">
                             {isSelectionMode && selectedIds.size > 0 && (
-                                <span className="text-sm flex items-center" style={{ color: '#5A463A' }}>{selectedIds.size} seleccionadas</span>
+                                <span className="text-xs flex items-center" style={{ color: '#5A463A' }}>{selectedIds.size} seleccionadas</span>
                             )}
-                            <Button appearance='mate' color="purple" intensity={500} size='sm' onClick={toggleSelectedMode}>
-                                {isSelectionMode ? "Cancelar" : "Seleccionar"}
-                            </Button>
-                            {isSelectionMode && (
-                                <Button appearance='mate' color='purple' intensity={700} size='sm' onClick={handleDownload}>
-                                    {downloading ? "Descargando..." : "Descargar"}
+                            {!isSelectionMode && (
+                                <Button appearance='mate' color="purple" intensity={500} size='sm' className="py-2!" onClick={toggleSelectedMode}>
+                                    Seleccionar
                                 </Button>
+                            )}
+                            {isSelectionMode && (
+                                <>
+                                    <Button appearance="ghost" color="purple" intensity={500} size='sm' className="py-2!" style={{ color: '#9D7BD6' }} onClick={handleSelectAllToggle}>
+                                        {allSelected ? "Deseleccionar todo" : "Seleccionar todo"}
+                                    </Button>
+                                    <Button appearance='mate' color='purple' intensity={700} size='sm' className="py-2!" onClick={handleDownload}>
+                                        {downloading ? "Descargando..." : "Descargar"}
+                                    </Button>
+                                    <Button appearance='mate' color="purple" intensity={500} size='sm' className="py-2!" onClick={toggleSelectedMode}>
+                                        Cancelar
+                                    </Button>
+                                </>
                             )}
                             {!isSelectionMode && (
                                 <>
