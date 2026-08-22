@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken'
 import { cookies } from 'next/headers'
 import { put } from "@vercel/blob";
 import exifr from 'exifr';
+import { generateBlurhash } from '@/lib/blurhash';
 
 const ACCEPTED_MIME_TYPES = new Set([
     'image/jpeg',
@@ -52,9 +53,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     let photoTime: string | null = null;
+    let blurhash: string | null = null;
 
     if (isImage) {
         const arrayBuffer = await file.arrayBuffer();
+
+        // Generate blurhash for image placeholder
+        blurhash = await generateBlurhash(arrayBuffer);
 
         try {
             const exif = await exifr.parse(arrayBuffer);
@@ -215,10 +220,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const content = blob.url;
 
     const result = await pool.query(
-        `INSERT INTO media (content, type, date, user_id, section_id, event_id)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO media (content, type, date, user_id, section_id, event_id, blurhash)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *`,
-        [content, file.type, date, userId, sectionId, eventId]
+        [content, file.type, date, userId, sectionId, eventId, blurhash]
     );
 
     return new Response(JSON.stringify(result.rows[0]), {
