@@ -75,7 +75,7 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds 
                     </div>
                     <div className="flex gap-x-2 items-stretch">
                         {isSelectionMode && selectedIds.size > 0 && (
-                            <span className="text-sm flex items-center" style={{ color: '#5A463A' }}>{selectedIds.size} seleccionadas</span>
+                            <span className="text-xs flex items-center" style={{ color: '#5A463A' }}>{selectedIds.size} seleccionadas</span>
                         )}
                         {!isSelectionMode && (
                             <Button appearance='mate' color="purple" intensity={500} size='sm' className="py-2!" onClick={toggleSelectedMode}>
@@ -84,7 +84,7 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds 
                         )}
                         {isSelectionMode && (
                             <>
-                                <Button appearance='mate' color="purple" intensity={500} size='sm' className="py-2!" onClick={handleSelectAllToggle}>
+                                <Button appearance='ghost' color="purple" size='sm' className="py-2!" style={{ color: '#9D7BD6' }} onClick={handleSelectAllToggle}>
                                     {allSelected ? "Deseleccionar todo" : "Seleccionar todo"}
                                 </Button>
                                 <Button appearance='mate' color='purple' intensity={700} size='sm' className="py-2!" onClick={handleDownload}>
@@ -123,7 +123,7 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds 
                         </Button>
                         <div className="flex gap-x-2 items-center">
                             {isSelectionMode && selectedIds.size > 0 && (
-                                <span className="text-sm flex items-center" style={{ color: '#5A463A' }}>{selectedIds.size} seleccionadas</span>
+                                <span className="text-xs flex items-center" style={{ color: '#5A463A' }}>{selectedIds.size} seleccionadas</span>
                             )}
                             {!isSelectionMode && (
                                 <Button appearance='mate' color="purple" intensity={500} size='sm' className="py-2!" onClick={toggleSelectedMode}>
@@ -132,7 +132,7 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds 
                             )}
                             {isSelectionMode && (
                                 <>
-                                    <Button appearance='mate' color="purple" intensity={500} size='sm' className="py-2!" onClick={handleSelectAllToggle}>
+                                    <Button appearance="ghost" color="purple" intensity={500} size='sm' className="py-2!" style={{ color: '#9D7BD6' }} onClick={handleSelectAllToggle}>
                                         {allSelected ? "Deseleccionar todo" : "Seleccionar todo"}
                                     </Button>
                                     <Button appearance='mate' color='purple' intensity={700} size='sm' className="py-2!" onClick={handleDownload}>
