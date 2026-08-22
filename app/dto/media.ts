@@ -7,4 +7,5 @@ export interface Media {
     liked: boolean;
     date: string;
     section_id: number | null;
+    blurhash: string | null;
 }
