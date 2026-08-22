@@ -21,10 +21,13 @@ export default function RootLayout({
 
   return (
     <html lang="es">
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+      </head>
       <body className="min-h-screen">
         {!loading && !authenticated && (<AuthPopup />)}
         <div className='mx-auto flex min-h-screen w-full max-w-4xl flex-col'>
-          <main className="flex flex-1 pt-4 py-4 pb-28">
+          <main className="flex flex-1 px-3 pt-4 py-4 pb-28 sm:px-4">
             {children}
           </main>
           {authenticated && <Navbar/>}
