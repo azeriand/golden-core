@@ -3,6 +3,8 @@ import { Button } from "azeriand-library"
 import { FaShare } from "react-icons/fa"
 import { IoSettingsSharp } from "react-icons/io5";
 import { TbLogout } from "react-icons/tb";
+import { IoCloseOutline } from "react-icons/io5";
+import { MdOutlineRadioButtonUnchecked, MdOutlineCheckCircleOutline } from "react-icons/md";
 import { Great_Vibes } from 'next/font/google'
 import useAuthStore from "../src/stores/auth.store";
 import useMediaUiStore from "../src/stores/media-ui.store";
@@ -65,46 +67,35 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds 
 
             {/* Barra: normal en flujo, fixed cuando stuck */}
             <div
-                className={`${isStuck ? 'fixed top-0 left-0 right-0 max-w-4xl mx-auto z-50 animate-slide-down' : ''} bg-[#FFFCF8]/95 backdrop-blur-md w-full px-4 py-3 transition-all duration-300 ease-in-out`}
+                className={`${isStuck ? 'fixed top-0 left-0 right-0 max-w-4xl mx-auto z-50' : 'bg-[#FFFCF8]/95 backdrop-blur-md'} w-full px-6 py-3 transition-all duration-300 ease-in-out`}
             >
+                {/* Blur gradient overlay - solo cuando stuck */}
+                {isStuck && (
+                    <div className="absolute inset-0 pointer-events-none" style={{
+                        height: '150%',
+                        backdropFilter: 'blur(4px)',
+                        WebkitBackdropFilter: 'blur(4px)',
+                        maskImage: 'linear-gradient(to bottom, black 0%, black 40%, transparent 100%)',
+                        WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 40%, transparent 100%)',
+                    }} />
+                )}
+
                 {/* Layout compacto */}
-                <div className={`flex items-center justify-between transition-all duration-300 ease-in-out ${isStuck ? 'opacity-100 translate-y-0' : 'opacity-0 h-0 overflow-hidden -translate-y-2'}`}>
-                    <div className='flex items-baseline gap-x-2'>
-                        <h1 className={`font-semibold ${greatVibes.className} text-purple-700`} style={{ fontSize: '1.85rem' }}>{event_name}</h1>
-                        <p className={`${greatVibes.className} text-purple-500`} style={{ fontSize: '1.25rem' }}>{event_date}</p>
-                    </div>
-                    <div className="flex gap-x-2 items-stretch">
-                        {isSelectionMode && selectedIds.size > 0 && (
-                            <span className="text-xs flex items-center" style={{ color: '#5A463A' }}>{selectedIds.size} seleccionadas</span>
-                        )}
+                <div className={`flex items-center justify-between transition-all duration-300 ease-in-out relative ${isStuck ? 'opacity-100 translate-y-0' : 'opacity-0 h-0 overflow-hidden -translate-y-2'}`}>
+                    <h1 className="font-black text-white" style={{ fontSize: '1.2rem', fontWeight: 900 }}>{event_name}</h1>
+                    <div className="flex gap-x-2 items-center">
                         {!isSelectionMode && (
-                            <Button appearance='mate' color="purple" intensity={500} size='sm' className="py-2!" onClick={toggleSelectedMode}>
+                            <Button appearance='mate' color="white" intensity={500} size='sm' className="py-2! rounded-xl! bg-white/15! backdrop-blur-md! border-white/20! text-white!" onClick={toggleSelectedMode}>
                                 Seleccionar
                             </Button>
                         )}
                         {isSelectionMode && (
                             <>
-                                <Button appearance='ghost' color="purple" size='sm' className="py-2!" style={{ color: '#9D7BD6' }} onClick={handleSelectAllToggle}>
-                                    {allSelected ? "Deseleccionar todo" : "Seleccionar todo"}
+                                <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleSelectAllToggle}>
+                                    {allSelected ? <MdOutlineCheckCircleOutline size={18} /> : <MdOutlineRadioButtonUnchecked size={18} />}
                                 </Button>
-                                <Button appearance='mate' color='purple' intensity={700} size='sm' className="py-2!" onClick={handleDownload}>
-                                    {downloading ? "Descargando..." : "Descargar"}
-                                </Button>
-                                <Button appearance='mate' color="purple" intensity={500} size='sm' className="py-2!" onClick={toggleSelectedMode}>
-                                    Cancelar
-                                </Button>
-                            </>
-                        )}
-                        <Button appearance='mate' color="purple" intensity={700} size='sm' className="aspect-square!" onClick={shareEvent}>
-                            <FaShare size={14} />
-                        </Button>
-                        {!isSelectionMode && (
-                            <>
-                                {/* <Button appearance='mate' color="purple" intensity={700} size='sm' className="aspect-square h-8!">
-                                    <IoSettingsSharp size={14} />
-                                </Button> */}
-                                <Button appearance='outlined' color="amber" intensity={700} size='sm' className="aspect-square!" style={{ color: '#5A463A' }} onClick={logout}>
-                                    <TbLogout size={14} />
+                                <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={toggleSelectedMode}>
+                                    <IoCloseOutline size={18} />
                                 </Button>
                             </>
                         )}
@@ -117,44 +108,21 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds 
                         <h1 className={`text-2xl font-semibold ${greatVibes.className} text-purple-700`}>{event_name}</h1>
                         <p className={`text-2xl font-bold ${greatVibes.className} text-purple-500`}>{event_date}</p>
                     </div>
-                    <div className='flex w-full justify-between items-stretch'>
-                        <Button appearance='mate' size="sm" color="amber" intensity={700} className="rounded-md" onClick={shareEvent}>
-                            <FaShare size={14} className="inline mr-1"/> Compartir enlace
-                        </Button>
-                        <div className="flex gap-x-2 items-center">
-                            {isSelectionMode && selectedIds.size > 0 && (
-                                <span className="text-xs flex items-center" style={{ color: '#5A463A' }}>{selectedIds.size} seleccionadas</span>
-                            )}
-                            {!isSelectionMode && (
+                    {!isSelectionMode && (
+                        <div className='flex w-full justify-between items-center'>
+                            {/* <Button appearance='mate' size="sm" color="amber" intensity={700} className="rounded-md py-2!" onClick={shareEvent}>
+                                <FaShare size={14} className="inline mr-1"/> Compartir enlace
+                            </Button>
+                            <div className="flex gap-x-2 items-center">
                                 <Button appearance='mate' color="purple" intensity={500} size='sm' className="py-2!" onClick={toggleSelectedMode}>
                                     Seleccionar
                                 </Button>
-                            )}
-                            {isSelectionMode && (
-                                <>
-                                    <Button appearance="ghost" color="purple" intensity={500} size='sm' className="py-2!" style={{ color: '#9D7BD6' }} onClick={handleSelectAllToggle}>
-                                        {allSelected ? "Deseleccionar todo" : "Seleccionar todo"}
-                                    </Button>
-                                    <Button appearance='mate' color='purple' intensity={700} size='sm' className="py-2!" onClick={handleDownload}>
-                                        {downloading ? "Descargando..." : "Descargar"}
-                                    </Button>
-                                    <Button appearance='mate' color="purple" intensity={500} size='sm' className="py-2!" onClick={toggleSelectedMode}>
-                                        Cancelar
-                                    </Button>
-                                </>
-                            )}
-                            {!isSelectionMode && (
-                                <>
-                                    {/* <Button appearance='mate' color="purple" intensity={700} size='sm' className="aspect-square h-8!">
-                                        <IoSettingsSharp size={14} />
-                                    </Button> */}
-                                    <Button appearance='outlined' color="amber" intensity={700} size='sm' className="aspect-square!" style={{ color: '#5A463A' }} onClick={logout}>
-                                        <TbLogout size={14} />
-                                    </Button>
-                                </>
-                            )}
+                                <Button appearance='outlined' color="amber" intensity={700} size='sm' className="aspect-square!" style={{ color: '#5A463A' }} onClick={logout}>
+                                    <TbLogout size={14} />
+                                </Button>
+                            </div> */}
                         </div>
-                    </div>
+                    )}
                     <hr className='w-full border-t border-stone-300' />
                 </div>
             </div>
