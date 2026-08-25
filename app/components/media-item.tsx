@@ -36,22 +36,18 @@ export default function MediaItem({index, src, type, likes, liked, mediaID, sect
             )}
 
             {isVideo ? (
-                <div className="relative">
+                <div className="relative cursor-pointer" onClick={handleClick}>
                     <video
                         src={src}
-                        controls={!isSelectionMode}
                         playsInline
                         preload="metadata"
-                        className="w-full h-auto cursor-pointer"
-                        onClick={handleClick}
+                        className="w-full h-auto pointer-events-none"
                     />
-                    {isSelectionMode && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21" /></svg>
-                            </div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21" /></svg>
                         </div>
-                    )}
+                    </div>
                 </div>
             ) : (
                 <>
