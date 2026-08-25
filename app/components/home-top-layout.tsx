@@ -72,7 +72,7 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds 
                     <p className={`text-2xl font-bold ${greatVibes.className} text-purple-500`}>{event_date}</p>
                     <hr className='w-full border-t border-stone-300 mt-2' />
                     <div className="flex w-full justify-end mt-4 -mb-3">
-                        <Button appearance='mate' color="purple" intensity={500} size='sm' className="py-2! text-xs! rounded-xl!" onClick={toggleSelectedMode}>
+                        <Button appearance='mate' color="purple" intensity={200} size='sm' className="py-2! text-xs! rounded-xl! border-purple-200!" style={{ color: '#9D7BD6' }} onClick={toggleSelectedMode}>
                             Seleccionar
                         </Button>
                     </div>
