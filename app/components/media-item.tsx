@@ -8,7 +8,7 @@ import useMediaUiStore from "../src/stores/media-ui.store";
 import { MdOutlineRadioButtonUnchecked } from "react-icons/md";
 import { MdOutlineCheckCircleOutline } from "react-icons/md";
 
-export default function MediaItem({index, src, type, likes, liked, mediaID, section_id, sections, blurhash, onZoom}: {index: number, src: string, type: string | null, likes: number, liked: boolean, mediaID: number, section_id: number|null, sections: Section[], blurhash: string | null, onZoom: () => void}) {
+export default function MediaItem({index, src, type, likes, liked, mediaID, section_id, sections, blurhash, username, onZoom}: {index: number, src: string, type: string | null, likes: number, liked: boolean, mediaID: number, section_id: number|null, sections: Section[], blurhash: string | null, username: string | null, onZoom: () => void}) {
     const [loaded, setLoaded] = useState(false);
 
     const isVideo = type?.startsWith("video/");
@@ -63,7 +63,10 @@ export default function MediaItem({index, src, type, likes, liked, mediaID, sect
                     />
                 </>
             )}
-            <LikeCounter likes={likes} mediaID={mediaID} liked={liked} className='absolute bottom-2 right-2'/>
+            <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center">
+                {username && <span className="text-xs text-white/80 drop-shadow-md">{username}</span>}
+                <LikeCounter likes={likes} mediaID={mediaID} liked={liked} className='ml-auto'/>
+            </div>
         </article>
     )
 }

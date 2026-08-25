@@ -8,4 +8,5 @@ export interface Media {
     date: string;
     section_id: number | null;
     blurhash: string | null;
+    username: string | null;
 }
