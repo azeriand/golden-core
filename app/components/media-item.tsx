@@ -30,7 +30,7 @@ export default function MediaItem({index, src, type, likes, liked, mediaID, sect
         <article key={index} className='w-full h-auto relative overflow-hidden'>
             
             { isSelectionMode && (
-                <div className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white flex items-center justify-center">
+                <div className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white flex items-center justify-center cursor-pointer" onClick={() => toggleSelected(mediaID)}>
                     {selected ? <MdOutlineCheckCircleOutline size={20}/> : <MdOutlineRadioButtonUnchecked size={20}/>}
                 </div>
             )}
