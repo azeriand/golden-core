@@ -65,12 +65,24 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds 
             {/* Spacer para compensar la barra fixed */}
             {isStuck && <div className="h-14" />}
 
-            {/* Barra: normal en flujo, fixed cuando stuck */}
-            <div
-                className={`${isStuck ? 'fixed top-0 left-0 right-0 max-w-4xl mx-auto z-50' : 'bg-[#FFFCF8]/95 backdrop-blur-md'} w-full px-6 py-3 transition-all duration-300 ease-in-out`}
-            >
-                {/* Blur gradient overlay - solo cuando stuck */}
-                {isStuck && (
+            {/* Barra expandida: en flujo debajo de la imagen */}
+            <div className={`bg-[#FFFCF8]/95 backdrop-blur-md w-full px-6 py-3 ${isStuck ? 'hidden' : ''}`}>
+                <div className="flex flex-col items-center gap-y-1">
+                    <h1 className={`text-2xl font-semibold ${greatVibes.className} text-purple-700`}>{event_name}</h1>
+                    <p className={`text-2xl font-bold ${greatVibes.className} text-purple-500`}>{event_date}</p>
+                    <hr className='w-full border-t border-stone-300 mt-2' />
+                    <div className="flex w-full justify-end mt-4 -mb-3">
+                        <Button appearance='mate' color="purple" intensity={500} size='sm' className="py-2! text-xs! rounded-xl!" onClick={toggleSelectedMode}>
+                            Seleccionar
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Barra compacta: fixed cuando stuck */}
+            {isStuck && (
+                <div className="fixed top-0 left-0 right-0 max-w-4xl mx-auto z-50 w-full px-6 py-3">
+                    {/* Blur gradient overlay */}
                     <div className="absolute inset-0 pointer-events-none" style={{
                         height: '150%',
                         backdropFilter: 'blur(4px)',
@@ -78,54 +90,30 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds 
                         maskImage: 'linear-gradient(to bottom, black 0%, black 40%, transparent 100%)',
                         WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 40%, transparent 100%)',
                     }} />
-                )}
 
-                {/* Layout compacto */}
-                <div className={`flex items-center justify-between transition-all duration-300 ease-in-out relative ${isStuck ? 'opacity-100 translate-y-0' : 'opacity-0 h-0 overflow-hidden -translate-y-2'}`}>
-                    <h1 className="font-black text-white" style={{ fontSize: '1.2rem', fontWeight: 900 }}>{event_name}</h1>
-                    <div className="flex gap-x-2 items-center">
-                        {!isSelectionMode && (
-                            <Button appearance='mate' color="white" intensity={500} size='sm' className="py-2! rounded-xl! bg-white/15! backdrop-blur-md! border-white/20! text-white!" onClick={toggleSelectedMode}>
-                                Seleccionar
-                            </Button>
-                        )}
-                        {isSelectionMode && (
-                            <>
-                                <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleSelectAllToggle}>
-                                    {allSelected ? <MdOutlineCheckCircleOutline size={18} /> : <MdOutlineRadioButtonUnchecked size={18} />}
-                                </Button>
-                                <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={toggleSelectedMode}>
-                                    <IoCloseOutline size={18} />
-                                </Button>
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                {/* Layout expandido */}
-                <div className={`flex flex-col items-center gap-y-3 transition-all duration-300 ease-in-out ${isStuck ? 'opacity-0 h-0 overflow-hidden translate-y-2' : 'opacity-100 translate-y-0'}`}>
-                    <div className='flex flex-col items-center'>
-                        <h1 className={`text-2xl font-semibold ${greatVibes.className} text-purple-700`}>{event_name}</h1>
-                        <p className={`text-2xl font-bold ${greatVibes.className} text-purple-500`}>{event_date}</p>
-                    </div>
-                    {!isSelectionMode && (
-                        <div className='flex w-full justify-between items-center'>
-                            {/* <Button appearance='mate' size="sm" color="amber" intensity={700} className="rounded-md py-2!" onClick={shareEvent}>
-                                <FaShare size={14} className="inline mr-1"/> Compartir enlace
-                            </Button>
-                            <div className="flex gap-x-2 items-center">
-                                <Button appearance='mate' color="purple" intensity={500} size='sm' className="py-2!" onClick={toggleSelectedMode}>
+                    {/* Layout compacto */}
+                    <div className="flex items-center justify-between relative">
+                        <h1 className="font-black text-white" style={{ fontSize: '1.2rem', fontWeight: 900 }}>{event_name}</h1>
+                        <div className="flex gap-x-2 items-center">
+                            {!isSelectionMode && (
+                                <Button appearance='mate' color="white" intensity={500} size='sm' className="py-2! rounded-xl! bg-white/15! backdrop-blur-md! border-white/20! text-white!" onClick={toggleSelectedMode}>
                                     Seleccionar
                                 </Button>
-                                <Button appearance='outlined' color="amber" intensity={700} size='sm' className="aspect-square!" style={{ color: '#5A463A' }} onClick={logout}>
-                                    <TbLogout size={14} />
-                                </Button>
-                            </div> */}
+                            )}
+                            {isSelectionMode && (
+                                <>
+                                    <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleSelectAllToggle}>
+                                        {allSelected ? <MdOutlineCheckCircleOutline size={18} /> : <MdOutlineRadioButtonUnchecked size={18} />}
+                                    </Button>
+                                    <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={toggleSelectedMode}>
+                                        <IoCloseOutline size={18} />
+                                    </Button>
+                                </>
+                            )}
                         </div>
-                    )}
-                    <hr className='w-full border-t border-stone-300' />
+                    </div>
                 </div>
-            </div>
+            )}
         </>
     )
 }
