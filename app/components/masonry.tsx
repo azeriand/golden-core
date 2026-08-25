@@ -38,7 +38,7 @@ export default function Masonry({ images, sections, onZoom }: MasonryProps) {
                     />
                 ))}
                 {imagesOdd.map((media: Media, index) => (
-                    <MediaItem key={index} index={index} src={media.content} type={media.type} likes={media.likes} mediaID={media.media_id} liked={media.liked} section_id={media.section_id} sections={sections} blurhash={media.blurhash} onZoom={() => onZoom(media)}/>
+                    <MediaItem key={index} index={index} src={media.content} type={media.type} likes={media.likes} mediaID={media.media_id} liked={media.liked} section_id={media.section_id} sections={sections} blurhash={media.blurhash} username={media.username} onZoom={() => onZoom(media)}/>
                 ))}
             </div>
             <div className='flex flex-col gap-2'>
@@ -51,7 +51,7 @@ export default function Masonry({ images, sections, onZoom }: MasonryProps) {
                     />
                 ))}
                 {imagesEven.map((media: Media, index) => (
-                    <MediaItem key={index} index={index} src={media.content} type={media.type} likes={media.likes} mediaID={media.media_id} liked={media.liked} section_id={media.section_id} sections={sections} blurhash={media.blurhash} onZoom={() => onZoom(media)}/>
+                    <MediaItem key={index} index={index} src={media.content} type={media.type} likes={media.likes} mediaID={media.media_id} liked={media.liked} section_id={media.section_id} sections={sections} blurhash={media.blurhash} username={media.username} onZoom={() => onZoom(media)}/>
                 ))}
             </div>
         </section>

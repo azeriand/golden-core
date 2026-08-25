@@ -244,7 +244,7 @@ export default function Navbar() {
                     </div>
 
                     {/* Centro: contador */}
-                    <span className="text-sm font-medium text-white/80 text-center">
+                    <span className="text-sm font-black text-white/80 text-center">
                         {selectedIds.size} seleccionados
                     </span>
 

@@ -91,6 +91,7 @@ if (!jwtSecret) {
       media.date,
       media.type,
       media.blurhash,
+      users.username,
       COALESCE(l.likes, 0) AS likes,
       EXISTS (
       SELECT 1
@@ -101,6 +102,7 @@ if (!jwtSecret) {
       FROM events
       LEFT JOIN sections ON events.event_id = sections.event_id
       LEFT JOIN media ON sections.section_id = media.section_id
+      LEFT JOIN users ON media.user_id = users.user_id
       LEFT JOIN (
           SELECT media_id, COUNT(*) AS likes
           FROM likes
@@ -125,7 +127,7 @@ if (!jwtSecret) {
       event_slug: rows[0].event_slug,
       event_date: rows[0].event_date,
       sections: rows.reduce((acc: any[], row: any) => {
-        const { section_id, section_name, start_date, finish_date, media_id, user_id, content, likes, liked, date, type, blurhash } = row;
+        const { section_id, section_name, start_date, finish_date, media_id, user_id, content, likes, liked, date, type, blurhash, username } = row;
         // If there's no section for this row (outer join resulted in null), skip
         if (section_id == null) return acc;
 
@@ -143,7 +145,7 @@ if (!jwtSecret) {
 
         // Only add media when media exists (media_id may be null from LEFT JOIN)
         if (media_id != null) {
-          section.media.push({ media_id, user_id, content, likes, liked, date, type, blurhash });
+          section.media.push({ media_id, user_id, content, likes, liked, date, type, blurhash, username });
         }
 
         return acc;
