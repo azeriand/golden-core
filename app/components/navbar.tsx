@@ -233,10 +233,10 @@ export default function Navbar() {
                     <div className="flex gap-x-2 justify-start">
                         {canMoveAndDelete && (
                             <>
-                                <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleMove}>
+                                <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white! md:text-purple-700! md:border-purple-200! md:bg-purple-50!" style={{ width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleMove}>
                                     <HiOutlineArrowsExpand size={18} />
                                 </Button>
-                                <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleDelete}>
+                                <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white! md:text-purple-700! md:border-purple-200! md:bg-purple-50!" style={{ width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleDelete}>
                                     <FiTrash2 size={18} />
                                 </Button>
                             </>
@@ -244,13 +244,13 @@ export default function Navbar() {
                     </div>
 
                     {/* Centro: contador */}
-                    <span className="text-sm font-black text-white/80 text-center">
+                    <span className="text-sm font-black text-white/80 md:text-purple-700 text-center">
                         {selectedIds.size} seleccionados
                     </span>
 
                     {/* Derecha: descargar */}
                     <div className="flex justify-end">
-                        <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { if (!downloading && selectedIds.size > 0) downloadSelected(); }}>
+                        <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white! md:text-purple-700! md:border-purple-200! md:bg-purple-50!" style={{ width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { if (!downloading && selectedIds.size > 0) downloadSelected(); }}>
                             <FiDownload size={18} />
                         </Button>
                     </div>
@@ -269,7 +269,7 @@ export default function Navbar() {
                         </Button>
                     </Card>
 
-                    <Button appearance='mate' color="white" intensity={500} size='md' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '48px', height: '48px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} icon={<TbPhotoPlus size={24}/>} onClick={() => fileInputRef.current?.click()}></Button>
+                    <Button appearance='mate' color="white" intensity={500} size='md' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white! md:text-[#9D7BD6]! md:border-purple-500! md:bg-purple-200!" style={{ width: '48px', height: '48px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} icon={<TbPhotoPlus size={24}/>} onClick={() => fileInputRef.current?.click()}></Button>
                     <input ref={fileInputRef} type="file" accept="image/*, video/*" multiple className="hidden" onChange={(e) => {
                         const files = Array.from(e.target.files || []);
                         if (files.length === 0) return;
