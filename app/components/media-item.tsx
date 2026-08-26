@@ -41,7 +41,8 @@ export default function MediaItem({index, src, type, likes, liked, mediaID, sect
                         src={src}
                         playsInline
                         preload="metadata"
-                        className="w-full h-auto pointer-events-none"
+                        className={`w-full h-auto pointer-events-none transition-all duration-200`}
+                        style={{ filter: selected ? 'brightness(1.2)' : 'none', opacity: selected ? 0.7 : 1 }}
                     />
                     <div className="absolute inset-0 flex items-center justify-center">
                         <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center">
@@ -62,7 +63,8 @@ export default function MediaItem({index, src, type, likes, liked, mediaID, sect
                     <img
                         src={src}
                         alt={`Imagen ${index}`}
-                        className={`w-full h-auto cursor-pointer transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+                        className={`w-full h-auto cursor-pointer transition-all duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+                        style={{ filter: selected ? 'brightness(1.2)' : 'none', opacity: selected && loaded ? 0.7 : loaded ? 1 : 0 }}
                         onLoad={() => setLoaded(true)}
                         onClick={handleClick}
                     />
