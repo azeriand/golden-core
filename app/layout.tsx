@@ -27,7 +27,7 @@ export default function RootLayout({
       <body className="min-h-screen">
         {!loading && !authenticated && (<AuthPopup />)}
         <div className='mx-auto flex min-h-screen w-full max-w-4xl flex-col'>
-          <main className="flex flex-1 px-3 pt-4 py-4 pb-28 sm:px-4">
+          <main className="flex flex-1 px-1 pt-4 py-4 pb-28 sm:px-1">
             {children}
           </main>
           {authenticated && <Navbar/>}

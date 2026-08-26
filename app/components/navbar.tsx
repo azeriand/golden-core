@@ -219,11 +219,12 @@ export default function Navbar() {
             )}
 
             {/* Blur gradient inferior */}
-            <div className="fixed bottom-0 left-0 right-0 h-32 pointer-events-none z-[99]" style={{
+            <div className="fixed bottom-0 left-0 right-0 h-40 pointer-events-none z-[99]" style={{
                 backdropFilter: 'blur(4px)',
                 WebkitBackdropFilter: 'blur(4px)',
-                maskImage: 'linear-gradient(to top, black 0%, black 40%, transparent 100%)',
-                WebkitMaskImage: 'linear-gradient(to top, black 0%, black 40%, transparent 100%)',
+                background: 'linear-gradient(0deg, rgba(0,0,0,0.8) -20%, rgba(0,0,0,0) 40%)',
+                maskImage: 'linear-gradient(to top, black 0%, black 40%, transparent 70%)',
+                WebkitMaskImage: 'linear-gradient(to top, black 0%, black 40%, transparent 70%)',
             }} />
 
             {isSelectionMode ? (
@@ -284,7 +285,7 @@ export default function Navbar() {
                         </Button>
                     </Card>
 
-                    <Button appearance='mate' color="white" intensity={500} size='md' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white! md:text-[#9D7BD6]! md:border-purple-500! md:bg-purple-200!" style={{ width: '48px', height: '48px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} icon={<TbPhotoPlus size={24}/>} onClick={() => fileInputRef.current?.click()}></Button>
+                    <Button appearance='mate' color="purple" intensity={700} size='md' className="!rounded-full bg-purple-700/90! backdrop-blur-md! border-purple-500! text-white! md:text-[#9D7BD6]! md:border-purple-500! md:bg-purple-200!" style={{ width: '48px', height: '48px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} icon={<TbPhotoPlus size={24}/>} onClick={() => fileInputRef.current?.click()}></Button>
                     <input ref={fileInputRef} type="file" accept="image/*,video/*,.heic,.heif,.mov,.mp4" multiple className="hidden" onChange={(e) => {
                         const files = Array.from(e.target.files || []);
                         if (files.length === 0) return;
