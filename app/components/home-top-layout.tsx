@@ -96,11 +96,12 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds 
                 <div className="fixed top-0 left-0 right-0 max-w-4xl mx-auto z-50 w-full px-6 py-3">
                     {/* Blur gradient overlay */}
                     <div className="absolute inset-0 pointer-events-none" style={{
-                        height: '150%',
+                        height: '160px',
                         backdropFilter: 'blur(4px)',
                         WebkitBackdropFilter: 'blur(4px)',
-                        maskImage: 'linear-gradient(to bottom, black 0%, black 40%, transparent 100%)',
-                        WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 40%, transparent 100%)',
+                        background: 'linear-gradient(180deg, rgba(0,0,0,0.8) -20%, rgba(0,0,0,0) 40%)',
+                        maskImage: 'linear-gradient(to bottom, black 0%, black 40%, transparent 70%)',
+                        WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 40%, transparent 70%)',
                     }} />
 
                     {/* Layout compacto */}
