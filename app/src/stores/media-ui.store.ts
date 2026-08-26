@@ -154,7 +154,7 @@ const useMediaUiStore = create<MediaUiState>((set, get) => ({
         // Sin Content-Length: leer stream e ir incrementando progreso indeterminado
         if (response.body) {
           const reader = response.body.getReader();
-          const chunks: Uint8Array[] = [];
+          const chunks: BlobPart[] = [];
           let received = 0;
           // Simular progreso basado en chunks recibidos (sin total conocido)
           while (true) {
@@ -190,7 +190,7 @@ const useMediaUiStore = create<MediaUiState>((set, get) => ({
       } else {
         // Leer stream con progreso
         const reader = response.body.getReader();
-        const chunks: Uint8Array[] = [];
+        const chunks: BlobPart[] = [];
         let received = 0;
 
         while (true) {
