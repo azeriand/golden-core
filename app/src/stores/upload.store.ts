@@ -88,7 +88,7 @@ const useUploadStore = create<UploadStore>((set, get) => ({
             ),
           }));
         },
-        timeoutMs: 30000,
+        timeoutMs: item.file.type.startsWith("video/") ? 120000 : 30000,
       })
         .then((media: Media) => {
           set((state) => ({
@@ -178,7 +178,7 @@ const useUploadStore = create<UploadStore>((set, get) => ({
           ),
         }));
       },
-      timeoutMs: 30000,
+      timeoutMs: updatedItem.file.type.startsWith("video/") ? 120000 : 30000,
     })
       .then((media: Media) => {
         set((state) => ({
