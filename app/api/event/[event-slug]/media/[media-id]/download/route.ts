@@ -85,6 +85,7 @@ export async function GET( request: NextRequest, { params }: { params: Promise<{
     headers: {
         "Content-Type": media.type || "application/octet-stream",
         "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Length": String(file.byteLength),
     },
 });
 }
