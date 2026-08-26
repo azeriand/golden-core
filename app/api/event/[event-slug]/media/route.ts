@@ -7,14 +7,20 @@ import { put } from "@vercel/blob";
 import exifr from 'exifr';
 import { generateBlurhash } from '@/lib/blurhash';
 
+// Allow longer execution for video uploads
+export const maxDuration = 60;
+
 const ACCEPTED_MIME_TYPES = new Set([
     'image/jpeg',
     'image/png',
     'image/webp',
     'image/heic',
+    'image/heif',
     'video/mp4',
     'video/quicktime',
     'video/webm',
+    'video/3gpp',
+    'video/3gpp2',
 ]);
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
@@ -37,10 +43,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const isImage = file.type.startsWith("image/");
     const isVideo = file.type.startsWith("video/");
 
-    // MIME type validation
-    if (!ACCEPTED_MIME_TYPES.has(file.type)) {
+    // MIME type validation — accept any image/ or video/ type for iOS compatibility
+    const isAcceptedType = ACCEPTED_MIME_TYPES.has(file.type) || 
+        (file.type.startsWith("image/") || file.type.startsWith("video/"));
+    
+    if (!isAcceptedType) {
         return new Response(
-            `Unsupported file type: ${file.type}. Accepted: JPEG, PNG, WEBP, HEIC, MP4, MOV, WEBM`,
+            `Unsupported file type: ${file.type}. Accepted: images and videos`,
             { status: 400 }
         );
     }
