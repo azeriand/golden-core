@@ -21,7 +21,7 @@ export default function Navbar() {
 
     const { state, changeState } = useGlobalStore();
     const { enqueueFiles } = useUploadStore();
-    const { isSelectionMode, selectedIds, downloading, downloadSelected, toggleSelectedMode, selectAll, deselectAll } = useMediaUiStore();
+    const { isSelectionMode, selectedIds, downloading, downloadSelected, toggleSelectedMode, selectAll, deselectAll, downloadProgress } = useMediaUiStore();
     const { event } = useEventStore();
     const { user } = useAuthStore();
     const [fileError, setFileError] = useState<string | null>(null);
@@ -250,9 +250,24 @@ export default function Navbar() {
 
                     {/* Derecha: descargar */}
                     <div className="flex justify-end">
-                        <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white! md:text-purple-700! md:border-purple-200! md:bg-purple-50!" style={{ width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { if (!downloading && selectedIds.size > 0) downloadSelected(); }}>
-                            <FiDownload size={18} />
-                        </Button>
+                        <button
+                            className="relative !rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-white md:text-purple-700 md:border-purple-200 md:bg-purple-50 flex items-center justify-center"
+                            style={{ width: '40px', height: '40px' }}
+                            onClick={() => { if (!downloading && selectedIds.size > 0) downloadSelected(); }}
+                        >
+                            {downloading ? (
+                                <svg width="28" height="28" className="transform -rotate-90">
+                                    <circle cx="14" cy="14" r="11" fill="none" stroke="currentColor" strokeWidth="2.5" opacity="0.2" />
+                                    <circle cx="14" cy="14" r="11" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                                        strokeDasharray={2 * Math.PI * 11}
+                                        strokeDashoffset={2 * Math.PI * 11 - (downloadProgress / 100) * 2 * Math.PI * 11}
+                                        className="transition-all duration-200 ease-out"
+                                    />
+                                </svg>
+                            ) : (
+                                <FiDownload size={18} />
+                            )}
+                        </button>
                     </div>
                 </div>
             ) : (

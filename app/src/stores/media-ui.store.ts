@@ -8,6 +8,7 @@ interface MediaUiState {
   clickedId: number | null;
   isSelectionMode: boolean;
   downloading: boolean;
+  downloadProgress: number;
 
   toggleSelected: (id: number) => void;
   toggleSelectedMode : () => void;
@@ -28,6 +29,7 @@ const useMediaUiStore = create<MediaUiState>((set, get) => ({
   clickedId: null,
   isSelectionMode: false,
   downloading: false,
+  downloadProgress: 0,
 
   toggleSelected: (id: number) =>
   set((state) => {
@@ -114,6 +116,7 @@ const useMediaUiStore = create<MediaUiState>((set, get) => ({
 
     set({
       downloading: true,
+      downloadProgress: 0,
     });
 
     try {
@@ -144,26 +147,80 @@ const useMediaUiStore = create<MediaUiState>((set, get) => ({
         );
       }
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
+      const contentLength = response.headers.get("Content-Length");
+      const total = contentLength ? parseInt(contentLength, 10) : 0;
 
-      link.href = url;
-      link.download = "media.zip";
+      if (!response.body || total === 0) {
+        // Sin Content-Length: leer stream e ir incrementando progreso indeterminado
+        if (response.body) {
+          const reader = response.body.getReader();
+          const chunks: Uint8Array[] = [];
+          let received = 0;
+          // Simular progreso basado en chunks recibidos (sin total conocido)
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            received += value.length;
+            // Progreso logarítmico: se acerca a 90% pero nunca llega hasta que termine
+            const simulated = Math.min(90, Math.round(50 * Math.log10(received / 1024 + 1)));
+            set({ downloadProgress: simulated });
+          }
+          set({ downloadProgress: 100 });
+          const blob = new Blob(chunks);
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = "media.zip";
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          window.URL.revokeObjectURL(url);
+        } else {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = "media.zip";
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          window.URL.revokeObjectURL(url);
+        }
+      } else {
+        // Leer stream con progreso
+        const reader = response.body.getReader();
+        const chunks: Uint8Array[] = [];
+        let received = 0;
 
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          received += value.length;
+          set({ downloadProgress: Math.round((received / total) * 100) });
+        }
 
-      window.URL.revokeObjectURL(url);
+        const blob = new Blob(chunks);
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "media.zip";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      }
 
       set({
         selectedIds: new Set<number>(),
+        isSelectionMode: false,
       });
 
     } finally {
       set({
         downloading: false,
+        downloadProgress: 0,
       });
     }
   },
