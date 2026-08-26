@@ -67,8 +67,8 @@ export default function MediaItem({index, src, type, likes, liked, mediaID, sect
                         width={0}
                         height={0}
                         sizes="50vw"
-                        className={`w-full h-auto cursor-pointer transition-all duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
-                        style={{ width: '100%', height: 'auto', filter: selected ? 'brightness(1.2)' : 'none', opacity: selected && loaded ? 0.7 : loaded ? 1 : 0 }}
+                        className={`w-full h-auto cursor-pointer transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+                        style={{ width: '100%', height: 'auto' }}
                         onLoad={() => setLoaded(true)}
                         onClick={handleClick}
                         loading="lazy"
