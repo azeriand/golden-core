@@ -2,12 +2,19 @@ import { encode } from "blurhash";
 
 /**
  * Generates a blurhash string from an image buffer.
- * Uses sharp (provided by Vercel at runtime) to resize and extract raw pixels.
+ * Uses sharp to resize and extract raw pixels.
+ * Returns null gracefully if sharp is unavailable.
  */
 export async function generateBlurhash(buffer: ArrayBuffer): Promise<string | null> {
+    let sharp: any;
     try {
-        const sharp = (await import("sharp")).default;
+        sharp = (await import("sharp")).default;
+    } catch {
+        console.warn("Sharp not available, skipping blurhash generation");
+        return null;
+    }
 
+    try {
         const { data, info } = await sharp(Buffer.from(buffer))
             .resize(32, 32, { fit: "inside" })
             .ensureAlpha()
