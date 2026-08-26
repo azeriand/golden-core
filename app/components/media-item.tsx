@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import LikeCounter from "./like-counter";
 import BlurhashCanvas from "./blurhash-canvas";
 import { Section } from "../dto/section";
@@ -59,12 +60,17 @@ export default function MediaItem({index, src, type, likes, liked, mediaID, sect
                             className="w-full h-auto absolute inset-0 object-cover"
                         />
                     )}
-                    <img
+                    <Image
                         src={src}
                         alt={`Imagen ${index}`}
+                        width={0}
+                        height={0}
+                        sizes="50vw"
                         className={`w-full h-auto cursor-pointer transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+                        style={{ width: '100%', height: 'auto' }}
                         onLoad={() => setLoaded(true)}
                         onClick={handleClick}
+                        loading="lazy"
                     />
                 </>
             )}
