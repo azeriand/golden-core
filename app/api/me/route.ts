@@ -166,6 +166,30 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  // Require authentication
+  const token = request.cookies.get("auth_token")?.value;
+
+  if (!token) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    return new Response("JWT_SECRET is not configured", { status: 500 });
+  }
+
+  let decoded: JWTPayload;
+  try {
+    decoded = jwt.verify(token, jwtSecret) as JWTPayload;
+  } catch {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  // Only admins can update users
+  if (!decoded.isAdmin) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
   const { username, email, password, isAdmin, eventId } = await request.json();
 
     const hashedPassword = await bcrypt.hash(password, 10)

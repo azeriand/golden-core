@@ -30,11 +30,17 @@ const useEventStore = create<EventStore>((set, get) => ({
                 loading: false,
             });
 
-        } catch (error) {
+        } catch (error: any) {
             set({
                 event: null,
                 loading: false,
             });
+
+            // If unauthorized, clear auth state to show login
+            if (error?.response?.status === 401) {
+                const { default: useAuthStore } = await import('./auth.store');
+                useAuthStore.setState({ user: null, authenticated: false, loading: false });
+            }
 
             console.error("Error", error);
         }

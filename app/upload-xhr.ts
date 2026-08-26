@@ -34,7 +34,7 @@ export function uploadFile(options: UploadOptions): Promise<Media> {
           reject(new Error('Failed to parse response JSON'));
         }
       } else {
-        reject(new Error(`Upload failed with status ${xhr.status}`));
+        reject(new Error(`Upload failed (${xhr.status}): ${xhr.responseText}`));
       }
     };
 
