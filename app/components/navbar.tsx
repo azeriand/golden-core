@@ -285,7 +285,7 @@ export default function Navbar() {
                     </Card>
 
                     <Button appearance='mate' color="white" intensity={500} size='md' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white! md:text-[#9D7BD6]! md:border-purple-500! md:bg-purple-200!" style={{ width: '48px', height: '48px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} icon={<TbPhotoPlus size={24}/>} onClick={() => fileInputRef.current?.click()}></Button>
-                    <input ref={fileInputRef} type="file" accept="image/*, video/*" multiple className="hidden" onChange={(e) => {
+                    <input ref={fileInputRef} type="file" accept="image/*,video/*,.heic,.heif,.mov,.mp4" multiple className="hidden" onChange={(e) => {
                         const files = Array.from(e.target.files || []);
                         if (files.length === 0) return;
 
