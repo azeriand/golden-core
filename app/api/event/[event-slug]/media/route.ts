@@ -8,6 +8,8 @@ import { put } from "@vercel/blob";
 import exifr from 'exifr';
 import { generateBlurhash } from '@/lib/blurhash';
 
+import { isDemoEvent, demoGuardResponse } from '@/lib/demo-guard';
+
 export const maxDuration = 60;
 
 const VIDEO_EXTENSIONS = new Set(['mov', 'mp4', 'webm', '3gp', '3gpp', 'avi', 'mkv', 'm4v']);
@@ -43,6 +45,7 @@ function validateImageMagicBytes(header: Uint8Array): boolean {
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ "event-slug": string }> }) {
     const { "event-slug": eventSlug } = await params;
+    if (isDemoEvent(eventSlug)) return demoGuardResponse();
     const cookieStore = await cookies();
     const token = cookieStore.get('auth_token')?.value;
 

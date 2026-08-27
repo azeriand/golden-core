@@ -3,9 +3,12 @@
 import jwt from "jsonwebtoken";
 import pool from '@/lib/db';
 import { NextRequest } from 'next/server';
+import { cookies } from 'next/headers';
+import { isDemoEvent, demoGuardResponse, isDemoUser } from '@/lib/demo-guard';
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ "event-slug": string }> }) {
   const { "event-slug": eventSlug } = await params;
+  if (isDemoEvent(eventSlug)) return demoGuardResponse();
   const { name, date } = await request.json();
 
   if (!name) {
@@ -72,6 +75,16 @@ if (!jwtSecret) {
     return new Response("Unauthorized", {
       status: 401,
     });
+  }
+
+  // Demo user can only access the demo event
+  if (isDemoUser(decoded.email) && !isDemoEvent(eventSlug)) {
+    const cookieStore = await cookies();
+    cookieStore.delete("auth_token");
+    return Response.json(
+      { error: "Demo user can only access the demo event" },
+      { status: 403 }
+    );
   }
 
   try {

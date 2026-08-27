@@ -2,12 +2,14 @@
 
 import pool from '@/lib/db';
 import { NextRequest } from 'next/server';
+import { isDemoEvent, demoGuardResponse } from '@/lib/demo-guard';
 
 export async function PATCH(
     request: NextRequest,
     { params }: { params: Promise<{ "event-slug": string; "media-id": string }> }
 ) {
     const { "event-slug": eventSlug, "media-id": mediaId } = await params;
+    if (isDemoEvent(eventSlug)) return demoGuardResponse();
 
     const { section_id } = await request.json();
 

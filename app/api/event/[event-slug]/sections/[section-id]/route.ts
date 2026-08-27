@@ -2,9 +2,11 @@
 
 import pool from '@/lib/db';
 import { NextRequest } from 'next/server';
+import { isDemoEvent, demoGuardResponse } from '@/lib/demo-guard';
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ "event-slug": string } & { "section-id": string }> }) {
   const { "event-slug": eventSlug, "section-id": sectionId } = await params;
+  if (isDemoEvent(eventSlug)) return demoGuardResponse();
   const { name, startDate, finishDate, sectionOrder } = await request.json();
 
   if (!name) {
@@ -48,6 +50,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function DELETE(_: any, { params }: { params: Promise<{ "event-slug": string } & { "section-id": string }> }) {
   const { "event-slug": eventSlug, "section-id": sectionId } = await params;
+  if (isDemoEvent(eventSlug)) return demoGuardResponse();
 
   try {
     const result = await pool.query(
