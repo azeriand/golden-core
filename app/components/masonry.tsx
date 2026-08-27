@@ -27,8 +27,8 @@ export default function Masonry({ images, sections, onZoom }: MasonryProps) {
     const [imagesEven, imagesOdd]: Media[][] = [images.filter((_, index) => index % 2 === 0), images.filter((_, index) => index % 2 !== 0)];
 
     return(
-        <section className='grid grid-cols-2 gap-2 grid-flow-row'>
-            <div className='flex flex-col gap-2'>
+        <section className='grid grid-cols-2 gap-1 grid-flow-row'>
+            <div className='flex flex-col gap-1'>
                 {placeholdersOdd.map((item: UploadItem) => (
                     <MediaItemPlaceholder
                         key={item.id}
@@ -41,7 +41,7 @@ export default function Masonry({ images, sections, onZoom }: MasonryProps) {
                     <MediaItem key={index} index={index} src={media.content} type={media.type} likes={media.likes} mediaID={media.media_id} liked={media.liked} section_id={media.section_id} sections={sections} blurhash={media.blurhash} username={media.username} onZoom={() => onZoom(media)}/>
                 ))}
             </div>
-            <div className='flex flex-col gap-2'>
+            <div className='flex flex-col gap-1'>
                 {placeholdersEven.map((item: UploadItem) => (
                     <MediaItemPlaceholder
                         key={item.id}
