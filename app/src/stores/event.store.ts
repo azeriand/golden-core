@@ -6,6 +6,7 @@ import { Event } from "@/app/dto/event";
 interface EventStore {
     event: Event | null;
     loading: boolean;
+    isDemo: boolean;
     fetchEvent: (event_slug: string) => Promise<void>;
     toggleLike: (mediaId: number) => Promise<void>;
     shareEvent: () => Promise<void>;
@@ -15,10 +16,13 @@ const useEventStore = create<EventStore>((set, get) => ({
 
     event: null,
     loading: true,
+    isDemo: false,
 
     fetchEvent: async (event_slug: string) => {
 
+        // Clear any stale event from a previous slug and mark loading.
         set({
+            event: null,
             loading: true,
         });
 
@@ -27,17 +31,21 @@ const useEventStore = create<EventStore>((set, get) => ({
 
             set({
                 event: response.data,
+                isDemo: response.data.event_slug === "demo",
                 loading: false,
             });
 
         } catch (error: any) {
             set({
                 event: null,
+                isDemo: false,
                 loading: false,
             });
 
-            // If unauthorized, clear auth state to show login
-            if (error?.response?.status === 401) {
+            // If unauthorized (401) or forbidden (403 — e.g. demo session invalidated),
+            // clear auth state so the client reflects that the cookie is gone.
+            const status = error?.response?.status;
+            if (status === 401 || status === 403) {
                 const { default: useAuthStore } = await import('./auth.store');
                 useAuthStore.setState({ user: null, authenticated: false, loading: false });
             }

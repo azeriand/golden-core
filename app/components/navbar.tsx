@@ -22,7 +22,7 @@ export default function Navbar() {
     const { state, changeState } = useGlobalStore();
     const { enqueueFiles } = useUploadStore();
     const { isSelectionMode, selectedIds, downloading, downloadSelected, toggleSelectedMode, selectAll, deselectAll, downloadProgress } = useMediaUiStore();
-    const { event } = useEventStore();
+    const { event, isDemo } = useEventStore();
     const { user } = useAuthStore();
     const [fileError, setFileError] = useState<string | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -50,8 +50,8 @@ export default function Navbar() {
         }
     };
 
-    // Solo puede mover/borrar si es admin o está en "Mis Fotos"
-    const canMoveAndDelete = user?.isAdmin || state === 'myPhotos';
+    // Solo puede mover/borrar si es admin o está en "Mis Fotos", y no es demo
+    const canMoveAndDelete = !isDemo && (user?.isAdmin || state === 'myPhotos');
 
     const handleDelete = () => {
         if (selectedIds.size === 0) return;
@@ -285,21 +285,25 @@ export default function Navbar() {
                         </Button>
                     </Card>
 
-                    <Button appearance='mate' color="purple" intensity={700} size='md' className="!rounded-full bg-purple-700/90! backdrop-blur-md! border-purple-500! text-white! md:text-[#9D7BD6]! md:border-purple-500! md:bg-purple-200!" style={{ width: '48px', height: '48px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} icon={<TbPhotoPlus size={24}/>} onClick={() => fileInputRef.current?.click()}></Button>
-                    <input ref={fileInputRef} type="file" accept="image/*,video/*,.heic,.heif,.mov,.mp4" multiple className="hidden" onChange={(e) => {
-                        const files = Array.from(e.target.files || []);
-                        if (files.length === 0) return;
+                    {!isDemo && (
+                        <>
+                            <Button appearance='mate' color="purple" intensity={700} size='md' className="!rounded-full bg-purple-700/90! backdrop-blur-md! border-purple-500! text-white! md:text-[#9D7BD6]! md:border-purple-500! md:bg-purple-200!" style={{ width: '48px', height: '48px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} icon={<TbPhotoPlus size={24}/>} onClick={() => fileInputRef.current?.click()}></Button>
+                            <input ref={fileInputRef} type="file" accept="image/*,video/*,.heic,.heif,.mov,.mp4" multiple className="hidden" onChange={(e) => {
+                                const files = Array.from(e.target.files || []);
+                                if (files.length === 0) return;
 
-                        if (files.length > 20) {
-                            setFileError("Puedes seleccionar hasta 20 archivos a la vez.");
-                            e.target.value = "";
-                            return;
-                        }
+                                if (files.length > 20) {
+                                    setFileError("Puedes seleccionar hasta 20 archivos a la vez.");
+                                    e.target.value = "";
+                                    return;
+                                }
 
-                        setFileError(null);
-                        enqueueFiles(files, eventSlug);
-                        e.target.value = "";
-                    }}/>
+                                setFileError(null);
+                                enqueueFiles(files, eventSlug);
+                                e.target.value = "";
+                            }}/>
+                        </>
+                    )}
 
                     {fileError && <p className="absolute -top-10 left-0 right-0 text-center text-red-500 text-sm bg-white/95 rounded-lg py-1 px-2">{fileError}</p>}
                 </div>

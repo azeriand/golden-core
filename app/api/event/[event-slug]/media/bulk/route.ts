@@ -4,6 +4,7 @@ import pool from '@/lib/db';
 import { NextRequest } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { del } from '@vercel/blob';
+import { isDemoEvent, demoGuardResponse } from '@/lib/demo-guard';
 
 /**
  * DELETE /api/event/[event-slug]/media/bulk
@@ -16,6 +17,7 @@ export async function DELETE(
     { params }: { params: Promise<{ "event-slug": string }> }
 ) {
     const { "event-slug": eventSlug } = await params;
+    if (isDemoEvent(eventSlug)) return demoGuardResponse();
 
     const token = request.cookies.get("auth_token")?.value;
 
@@ -126,6 +128,7 @@ export async function PATCH(
     { params }: { params: Promise<{ "event-slug": string }> }
 ) {
     const { "event-slug": eventSlug } = await params;
+    if (isDemoEvent(eventSlug)) return demoGuardResponse();
 
     const token = request.cookies.get("auth_token")?.value;
 
