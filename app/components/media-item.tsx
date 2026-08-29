@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Image from "next/image";
 import LikeCounter from "./like-counter";
 import BlurhashCanvas from "./blurhash-canvas";
@@ -11,6 +11,16 @@ import { MdOutlineCheckCircleOutline } from "react-icons/md";
 
 export default function MediaItem({index, src, type, likes, liked, mediaID, section_id, sections, blurhash, username, onZoom}: {index: number, src: string, type: string | null, likes: number, liked: boolean, mediaID: number, section_id: number|null, sections: Section[], blurhash: string | null, username: string | null, onZoom: () => void}) {
     const [loaded, setLoaded] = useState(false);
+    const [errored, setErrored] = useState(false);
+    const [blurhashFailed, setBlurhashFailed] = useState(false);
+    // Kept mounted until the image's opacity fade-in completes, so the placeholder
+    // stays visible BEHIND the image through the 300ms transition (no flash of the
+    // article background). Once the opaque image fully covers it, we unmount it.
+    const [fadeComplete, setFadeComplete] = useState(false);
+
+    // Stable identity so BlurhashCanvas's decode effect deps stay [blurhash, width, height, onDecodeError]
+    // and it does not re-decode on unrelated re-renders.
+    const handleBlurhashDecodeError = useCallback(() => setBlurhashFailed(true), []);
 
     const isVideo = type?.startsWith("video/");
 
@@ -53,12 +63,13 @@ export default function MediaItem({index, src, type, likes, liked, mediaID, sect
                 </div>
             ) : (
                 <>
-                    {blurhash && !loaded && (
+                    {blurhash && !fadeComplete && !errored && !blurhashFailed && (
                         <BlurhashCanvas
                             blurhash={blurhash}
                             width={32}
                             height={32}
                             className="w-full h-auto absolute inset-0 object-cover"
+                            onDecodeError={handleBlurhashDecodeError}
                         />
                     )}
                     <Image
@@ -70,6 +81,8 @@ export default function MediaItem({index, src, type, likes, liked, mediaID, sect
                         className={`w-full h-auto cursor-pointer transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
                         style={{ width: '100%', height: 'auto' }}
                         onLoad={() => setLoaded(true)}
+                        onError={() => setErrored(true)}
+                        onTransitionEnd={() => { if (loaded) setFadeComplete(true); }}
                         onClick={handleClick}
                         loading="lazy"
                     />

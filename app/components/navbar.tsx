@@ -5,6 +5,7 @@ import useUploadStore from "../src/stores/upload.store";
 import useMediaUiStore from "../src/stores/media-ui.store";
 import useEventStore from "../src/stores/event.store";
 import useAuthStore from "../src/stores/auth.store";
+import useErrorStore from "../src/stores/error.store";
 import { AiFillHome } from "react-icons/ai";
 import { TbPhotoPlus } from "react-icons/tb";
 import { PiFolderUserBold } from "react-icons/pi";
@@ -20,7 +21,10 @@ export default function Navbar() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const { state, changeState } = useGlobalStore();
-    const { enqueueFiles } = useUploadStore();
+    // Narrow to a stable function-ref selector so navbar no longer re-renders on
+    // every upload store change (e.g. progress ticks). The action reference is
+    // stable across updates.
+    const enqueueFiles = useUploadStore((s) => s.enqueueFiles);
     const { isSelectionMode, selectedIds, downloading, downloadSelected, toggleSelectedMode, selectAll, deselectAll, downloadProgress } = useMediaUiStore();
     const { event, isDemo } = useEventStore();
     const { user } = useAuthStore();
@@ -70,6 +74,7 @@ export default function Navbar() {
             if (!response.ok) {
                 const text = await response.text();
                 console.error("Error al eliminar:", text);
+                useErrorStore.getState().showError("No se pudieron eliminar los archivos.");
                 return;
             }
 
@@ -87,6 +92,7 @@ export default function Navbar() {
             toggleSelectedMode();
         } catch (error) {
             console.error("Error al eliminar:", error);
+            useErrorStore.getState().showError("No se pudieron eliminar los archivos.");
         } finally {
             setShowDeleteConfirm(false);
         }
@@ -111,6 +117,7 @@ export default function Navbar() {
             if (!response.ok) {
                 const text = await response.text();
                 console.error("Error al mover:", text);
+                useErrorStore.getState().showError("No se pudieron mover los archivos.");
                 return;
             }
 
@@ -138,6 +145,7 @@ export default function Navbar() {
             toggleSelectedMode();
         } catch (error) {
             console.error("Error al mover:", error);
+            useErrorStore.getState().showError("No se pudieron mover los archivos.");
         } finally {
             setShowMovePanel(false);
             setSelectedSectionId(null);
