@@ -1,4 +1,5 @@
 "use client"
+import { Button } from "azeriand-library"
 import HomeTopLayout from "../components/home-top-layout";
 import UserNavbar from "../components/user-navbar";
 import SectionHeader from "../components/section-header";
@@ -10,7 +11,7 @@ import useAuthStore from "../src/stores/auth.store";
 import useUploadStore from "../src/stores/upload.store";
 import { Media } from "../dto/media";
 import { useEffect, useRef, useState } from "react";
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import ZoomPhoto from "../components/zoom-photo";
 
 const DEMO_EMAIL = "demo@golden-core.app";
@@ -22,6 +23,7 @@ export default function Home() {
   const { state } = useGlobalStore();
   const { user, loading: authLoading, setUser } = useAuthStore();
   const params = useParams<{ id: string, ['event-slug']: string }>()
+  const router = useRouter();
   const slug = params["event-slug"];
 
   // Hydration guard: the very first client render must match the SSR output,
@@ -195,7 +197,15 @@ export default function Home() {
 
   // Fetch finished and there is no event: genuinely not found.
   if (!event) {
-    return <p>Evento no encontrado.</p>;
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-y-2 px-6 text-center">
+        <p className="text-7xl font-black text-purple-300">404</p>
+        <h1 className="text-2xl font-bold text-purple-700">Ups... evento no encontrado</h1>
+        <Button appearance='mate' color="purple" intensity={200} size='sm' className="mt-4 rounded-xl! border-purple-200!" style={{ color: '#9D7BD6' }} onClick={() => router.push('/demo')}>
+          Ir a la demo
+        </Button>
+      </div>
+    );
   }
 
 
