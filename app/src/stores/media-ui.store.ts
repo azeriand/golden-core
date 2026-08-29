@@ -217,6 +217,12 @@ const useMediaUiStore = create<MediaUiState>((set, get) => ({
         isSelectionMode: false,
       });
 
+    } catch (error) {
+      // Download failed (offline, server error, or aborted stream): surface a
+      // user-facing, offline-aware error instead of failing silently.
+      const { default: useErrorStore } = await import("./error.store");
+      useErrorStore.getState().showError("No se pudieron descargar los archivos.");
+      console.error("Error downloading media", error);
     } finally {
       set({
         downloading: false,

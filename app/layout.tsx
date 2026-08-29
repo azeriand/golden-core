@@ -2,6 +2,8 @@
 import 'azeriand-library/dist/styles.css';
 import AuthPopup from './components/auth-popup';
 import Navbar from './components/navbar';
+import ServiceWorkerRegister from './components/service-worker-register';
+import ErrorPopup from './components/error-popup';
 import useAuthStore from './src/stores/auth.store';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
@@ -28,6 +30,8 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
       </head>
       <body className="min-h-screen">
+        <ServiceWorkerRegister />
+        <ErrorPopup />
         {!loading && !authenticated && !isDemoRoute && (<AuthPopup />)}
         <div className='mx-auto flex min-h-screen w-full max-w-4xl flex-col'>
           <main className="flex flex-1 px-1 pt-4 py-4 pb-28 sm:px-1">

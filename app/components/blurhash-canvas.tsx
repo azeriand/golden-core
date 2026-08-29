@@ -8,9 +8,10 @@ interface BlurhashCanvasProps {
     width?: number;
     height?: number;
     className?: string;
+    onDecodeError?: () => void;
 }
 
-export default function BlurhashCanvas({ blurhash, width = 32, height = 32, className }: BlurhashCanvasProps) {
+export default function BlurhashCanvas({ blurhash, width = 32, height = 32, className, onDecodeError }: BlurhashCanvasProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
@@ -27,8 +28,9 @@ export default function BlurhashCanvas({ blurhash, width = 32, height = 32, clas
             ctx.putImageData(imageData, 0, 0);
         } catch (error) {
             console.error("Error decoding blurhash:", error);
+            onDecodeError?.();
         }
-    }, [blurhash, width, height]);
+    }, [blurhash, width, height, onDecodeError]);
 
     return (
         <canvas

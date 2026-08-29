@@ -4,6 +4,7 @@ import { Button } from "azeriand-library";
 import LikeCounter from "./like-counter";
 import useEventStore from "../src/stores/event.store";
 import useMediaUiStore from "../src/stores/media-ui.store";
+import useErrorStore from "../src/stores/error.store";
 
 export default function ZoomPhoto({ src, likes: initialLikes, mediaID, liked: initialLiked, type, eventSlug, onClose }: { src: string, likes: number, mediaID: number, liked: boolean, type: string | null, eventSlug: string, onClose: () => void }) {
     const { event } = useEventStore();
@@ -30,6 +31,7 @@ export default function ZoomPhoto({ src, likes: initialLikes, mediaID, liked: in
 
             if (!response.ok) {
                 console.error("Error downloading media");
+                useErrorStore.getState().showError("No se pudo descargar el archivo.");
                 return;
             }
 
@@ -77,6 +79,7 @@ export default function ZoomPhoto({ src, likes: initialLikes, mediaID, liked: in
             }
         } catch (error) {
             console.error("Error downloading media:", error);
+            useErrorStore.getState().showError("No se pudo descargar el archivo.");
         } finally {
             useMediaUiStore.setState({ downloading: false, downloadProgress: 0 });
         }

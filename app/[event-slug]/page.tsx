@@ -2,10 +2,12 @@
 import HomeTopLayout from "../components/home-top-layout";
 import UserNavbar from "../components/user-navbar";
 import SectionHeader from "../components/section-header";
-import Masonry from "../components/masonry";
+import Masonry, { UploadPlaceholders } from "../components/masonry";
+import RecoveryNoticePopup from "../components/recovery-notice-popup";
 import useEventStore from "../src/stores/event.store";
 import useGlobalStore from "../src/stores/global.store";
 import useAuthStore from "../src/stores/auth.store";
+import useUploadStore from "../src/stores/upload.store";
 import { Media } from "../dto/media";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from 'next/navigation'
@@ -34,6 +36,17 @@ export default function Home() {
   // Mode mounts effects twice in development, and re-renders could otherwise
   // fire a second POST before the session is replaced).
   const demoAuthLock = useRef(false);
+
+  // Tracks the slug whose event we've already loaded, so an unrelated `user`
+  // reference change (e.g. the enqueue-time identity re-sync via loadUser) does
+  // NOT retrigger fetchEvent — which would blank the whole gallery to the Loader
+  // (event: null, loading: true) for a few seconds and wipe just-added upload
+  // placeholders. See the coordinator effect for the exact fetch condition.
+  const loadedSlugRef = useRef<string | null>(null);
+  // Tracks the slug a fetchEvent is currently in flight for, so the coordinator
+  // effect (which re-runs on user/event changes) never fires a second fetch for
+  // the same slug while the first is still resolving.
+  const fetchingSlugRef = useRef<string | null>(null);
 
   // Single coordinator effect: resolves auth + demo session + event loading in order.
   useEffect(() => {
@@ -69,8 +82,19 @@ export default function Home() {
       // CASE 2: normal slug with no session → do nothing (layout shows AuthPopup).
       if (!user) return;
 
-      // CASE 3: correct session in place → fetch the event.
-      if (!cancelled) {
+      // CASE 3: correct session in place → fetch the event, but NOT on every
+      // `user` reference change. The enqueue-time identity re-sync (loadUser)
+      // produces a new `user` object; refetching then would set
+      // event:null/loading:true and flash the Loader over the gallery, wiping
+      // just-added upload placeholders. Fetch only once per slug: skip when we
+      // have already fetched this slug (loadedSlugRef) or a fetch for it is
+      // already in flight (fetchingSlugRef). A slug change resets both guards.
+      if (
+        !cancelled &&
+        loadedSlugRef.current !== slug &&
+        fetchingSlugRef.current !== slug
+      ) {
+        fetchingSlugRef.current = slug;
         fetchEvent(slug);
       }
     };
@@ -79,6 +103,23 @@ export default function Home() {
 
     return () => { cancelled = true; };
   }, [mounted, authLoading, slug, user, isDemoSlug, isDemoSession, fetchEvent, setUser]);
+
+  // Remember which slug we've successfully loaded the event for, so the
+  // coordinator effect above can skip refetching on unrelated `user` changes
+  // (its guard compares loadedSlugRef against the current slug). Also clears the
+  // in-flight marker once the event resolves.
+  useEffect(() => {
+    if (event) {
+      // Loaded successfully for this slug.
+      loadedSlugRef.current = slug;
+      fetchingSlugRef.current = null;
+    } else if (!loading && fetchingSlugRef.current === slug) {
+      // A fetch for this slug settled with no event (not-found / error). Clear
+      // the in-flight marker so a legitimate later trigger (e.g. after re-auth)
+      // can retry, without blanking the gallery on unrelated user changes.
+      fetchingSlugRef.current = null;
+    }
+  }, [event, loading, slug]);
 
   // Handle visibility change to prevent iOS freeze when returning from lock screen.
   // iOS pauses JS and compositing when the phone is locked. On resume, backdrop-filter
@@ -100,6 +141,26 @@ export default function Home() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
+
+  // Cross-reload upload recovery bootstrap (Task 9.4, design Component 7).
+  // Once we are mounted on the client, have a resolved (non-demo) session, the
+  // event slug, AND the event itself is loaded, surface/auto-resume any
+  // interrupted uploads persisted in IndexedDB. Gating on `event` is important:
+  // transparent auto-resume drives the recovered item through processOne, which
+  // needs the numeric `event_id` (to build the Blob pathname and pass the
+  // confirm/blob-belongs-to-event check). If recovery ran before the event
+  // finished loading, a resumed image would immediately fail with "no event"
+  // instead of resuming. `recoverInterrupted` is idempotent + run-once
+  // (module-level guard), so this still runs at most once. Skipped for the demo
+  // session/slug (demo is immutable and never produces recoverable uploads).
+  useEffect(() => {
+    if (!mounted) return;
+    if (!slug) return;
+    if (isDemoSlug || isDemoSession) return;
+    if (!user) return;
+    if (!event) return;
+    void useUploadStore.getState().recoverInterrupted(slug);
+  }, [mounted, slug, isDemoSlug, isDemoSession, user, event]);
 
 
 
@@ -149,15 +210,26 @@ export default function Home() {
 
   return (
     <main className="flex flex-col items-center w-full gap-y-4">
+      {/* One-time Spanish notice: videos / oversized images can't auto-resume
+          after a reload and must be re-uploaded manually. Shows only when the
+          recovery pass surfaced such items. */}
+      <RecoveryNoticePopup />
       {zoomedMedia && ( 
         <ZoomPhoto src={zoomedMedia.content} likes={zoomedMedia.likes} mediaID={zoomedMedia.media_id} liked={zoomedMedia.liked} type={zoomedMedia.type} eventSlug={slug} onClose={() => setZoomedMedia(null)} />
       )}
       <HomeTopLayout event_name={event.event_name} event_date={event.event_date} visibleMediaIds={filteredSections.flatMap((s) => s.media.map((m) => m.media_id))} />
       {state !== "home" && <UserNavbar />}
+      {/* Global upload placeholders: rendered ONCE here so they appear INSTANTLY
+          on enqueue, regardless of whether any section currently has media in
+          the active view (previously placeholders only lived inside a per-section
+          Masonry, so an empty/filtered section left them with nowhere to show
+          until an upload completed). Returns null when idle. Per-section Masonry
+          instances below pass showPlaceholders={false} to avoid duplication. */}
+      <UploadPlaceholders />
       {filteredSections.map((section) => (
         <div key={section.section_id} className="pt-4 flex flex-col gap-y-2 w-full">
           <SectionHeader label={section.section_name} time={`${section.start_date}-${section.finish_date}`} />
-          <Masonry images={section.media} sections={event.sections} onZoom={(media) => setZoomedMedia(media)} />
+          <Masonry images={section.media} sections={event.sections} onZoom={(media) => setZoomedMedia(media)} showPlaceholders={false} />
         </div>
       ))}
     </main>
