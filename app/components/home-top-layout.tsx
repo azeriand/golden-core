@@ -2,14 +2,16 @@
 import { Button } from "azeriand-library"
 import { IoCloseOutline } from "react-icons/io5";
 import { MdOutlineRadioButtonUnchecked, MdOutlineCheckCircleOutline } from "react-icons/md";
-<<<<<<< Updated upstream
-=======
 import { FiLogOut } from "react-icons/fi";
 import { Great_Vibes } from 'next/font/google'
->>>>>>> Stashed changes
 import useMediaUiStore from "../src/stores/media-ui.store";
 import useAuthStore from "../src/stores/auth.store";
 import { useEffect, useRef, useState } from "react";
+
+const greatVibes = Great_Vibes({
+  subsets: ['latin'],
+  weight: '400',
+})
 
 export default function HomeTopLayout({ event_name, event_date, visibleMediaIds }: { event_name: string, event_date: string, visibleMediaIds: number[] }) {
 
@@ -56,8 +58,6 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds 
                 className="w-full h-auto rounded-t-2xl"
             />
 
-<<<<<<< Updated upstream
-=======
             {/* Container estático con título, fecha y botón de seleccionar */}
             <div className="bg-[#FFFCF8]/95 backdrop-blur-md w-full px-6 py-3">
                 <div className="flex flex-col items-center gap-y-1">
@@ -89,7 +89,6 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds 
                 </div>
             </div>
 
->>>>>>> Stashed changes
             {/* Barra compacta: fixed cuando stuck */}
             {isStuck && (
                 <div className="fixed top-0 left-0 right-0 max-w-4xl mx-auto z-50 w-full px-6 py-3">
