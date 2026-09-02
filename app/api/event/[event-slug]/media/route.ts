@@ -5,8 +5,8 @@ import { NextRequest } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { put } from "@vercel/blob";
-import exifr from 'exifr';
 import { generateBlurhash } from '@/lib/blurhash';
+import { extractCreationTime } from '@/lib/media-metadata';
 
 export const maxDuration = 60;
 
@@ -108,28 +108,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         return new Response("File size exceeds 100 MB limit", { status: 400 });
     }
 
-    // Extract metadata from images
-    let photoTime: string | null = null;
-    let blurhash: string | null = null;
+    // Extract creation time-of-day for automatic categorization.
+    // Applies to both images and videos; categorization is based on the
+    // creation time (never the date). Best-effort: null falls back to the
+    // "Sin clasificar" section.
+    const photoTime: string | null = await extractCreationTime(file);
 
+    // Generate a blurhash preview for images only.
+    let blurhash: string | null = null;
     if (isImage) {
         const arrayBuffer = await file.arrayBuffer();
         blurhash = await generateBlurhash(arrayBuffer);
-
-        try {
-            const exif = await exifr.parse(arrayBuffer);
-            const dateTimeOriginal = exif?.DateTimeOriginal;
-            const photoOffset = exif?.OffsetTimeOriginal;
-
-            if (dateTimeOriginal && photoOffset) {
-                const [hours, minutes] = photoOffset.split(":").map(Number);
-                const offsetMinutes = (hours >= 0 ? 1 : -1) * (Math.abs(hours) * 60 + minutes);
-                const localDate = new Date(dateTimeOriginal.getTime() + offsetMinutes * 60 * 1000);
-                photoTime = localDate.toISOString().slice(11, 16);
-            }
-        } catch {
-            // EXIF parsing is best-effort
-        }
     }
 
     // Find event
