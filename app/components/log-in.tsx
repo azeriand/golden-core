@@ -13,7 +13,7 @@ export default function LogIn({ onSignup }: Props) {
         ? { color: '#FFFCF8', borderColor: '#F87171' }
         : { color: '#FFFCF8' };
 
-    const fieldClass = (field: string) => `border-thin! rounded-xl! py-1! px-3! text-xs! ${errorFields.includes(field) ? 'ring-1! ring-red-400!' : ''}`;
+    const fieldClass = (field: string) => `border-thin! rounded-xl! py-1! px-3! text-base! ${errorFields.includes(field) ? 'ring-1! ring-red-400!' : ''}`;
 
     return (
         <>
