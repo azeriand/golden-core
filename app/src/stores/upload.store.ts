@@ -5,6 +5,7 @@ import useEventStore from "./event.store";
 import useAuthStore from "./auth.store";
 import { uploadToBlob, type BlobUploadResult } from "@/lib/blob-upload-client";
 import { uploadQueue, type QueueRecord, type QueueStatus } from "@/lib/upload-queue";
+import { trackEvent } from "@/app/src/lib/analytics";
 
 // ---------------------------------------------------------------------------
 // upload.store.ts — Task 9.2 (design Component 7)
@@ -467,6 +468,50 @@ const RETRYABLE_STATUSES: ReadonlySet<UploadStatus> = new Set<UploadStatus>([
   "exhausted",
 ]);
 
+// ---------------------------------------------------------------------------
+// ANALYTICS (GA4) — see app/src/lib/analytics.ts.
+//
+// These helpers only READ item fields to build non-sensitive event params and
+// call `trackEvent`, which is completely non-blocking (never throws, no-ops on
+// the server / before GA loads). They NEVER mutate item state, activeCount,
+// attempt, retryCount, the queue, AbortControllers, or the server confirm — so
+// analytics can never interfere with the upload machinery.
+//
+// PARAMS: only useful, non-sensitive fields are sent. We DELIBERATELY never
+// send filename, file bytes, the Blob URL, tokens, cookies, email, or a user
+// id. `upload_id` is a technical correlation id ONLY (never a user identifier).
+// ---------------------------------------------------------------------------
+
+/**
+ * IDs currently being recovered via TRANSPARENT AUTO-RESUME (a byte-persisted
+ * image restored after a reload; see recoverInterrupted scenario 2). These flow
+ * through the normal startItem/processOne machinery, so processOne cannot
+ * otherwise tell them apart from a fresh same-session upload. Membership lets
+ * processOne emit `upload_recovered` (recovery_type: 'auto_resume') on success
+ * instead of `upload_completed`. This is a transient, in-memory-only marker: it
+ * touches NO item field, NO persisted record, and NO IndexedDB — so it cannot
+ * affect upload behavior. Cleared on any terminal outcome (success/fail/cancel).
+ */
+const autoResumeIds = new Set<string>();
+
+/** Build the shared, non-sensitive analytics params for an item. */
+function uploadParams(
+  item: UploadItem,
+  eventSlug: string
+): Record<string, string | number | undefined> {
+  return {
+    upload_id: item.id,
+    event_slug: eventSlug || undefined,
+    content_type: item.contentType || undefined,
+    file_size: item.originalSize,
+    processed_size:
+      typeof item.processedSize === "number" && item.processedSize > 0
+        ? item.processedSize
+        : undefined,
+    retry_count: item.retryCount,
+  };
+}
+
 const useUploadStore = create<UploadStore>((set, get) => {
   /** Patch a single item in-place by id. */
   const patchItem = (id: string, partial: Partial<UploadItem>) => {
@@ -578,6 +623,33 @@ const useUploadStore = create<UploadStore>((set, get) => {
      */
     const release = (finalStatus: UploadStatus, patch: Partial<UploadItem>) => {
       if (!isCurrentAttempt(id, attempt)) return;
+
+      // GA4: emit `upload_failed` EXACTLY when an attempt truly finishes as
+      // 'failed'. Placing it inside `release` (which the attempt-guard makes run
+      // at most once per attempt) means every failed path — no eventId, Blob
+      // upload error, confirm error — is covered with NO risk of a duplicate
+      // event for the same attempt, and a stale/superseded attempt (guard above)
+      // emits nothing. Read the item BEFORE the status write for accurate params;
+      // include the error message (a safe, non-sensitive user-facing string).
+      // The success/canceled outcomes are tracked at their own call sites, not
+      // here. Any terminal outcome clears the transient auto-resume marker so it
+      // can never leak to a later reused id. Non-blocking.
+      if (finalStatus === "failed") {
+        const failedItem = get().items.find((i) => i.id === id);
+        if (failedItem) {
+          trackEvent("upload_failed", {
+            ...uploadParams(failedItem, eventSlug),
+            error_message:
+              typeof patch.error === "string"
+                ? patch.error
+                : failedItem.error ?? undefined,
+          });
+        }
+      }
+      if (finalStatus !== "success") {
+        autoResumeIds.delete(id);
+      }
+
       set((state) => ({
         activeCount: Math.max(0, state.activeCount - 1),
         items: state.items.map((i) =>
@@ -727,6 +799,27 @@ const useUploadStore = create<UploadStore>((set, get) => {
     if (!isCurrentAttempt(id, attempt)) return;
 
     appendMediaToEventStore(media);
+
+    // GA4: the upload is now TRULY completed — confirm succeeded (postConfirm ->
+    // 200/201) and the Media was appended to the event store. A resolved Blob
+    // upload alone NEVER reaches here, so `upload_completed` is confirm-gated by
+    // construction. Emit BEFORE the fire-and-forget IndexedDB cleanup (order is
+    // irrelevant to correctness; both are non-blocking). Build params from the
+    // live item so processed_size/content_type reflect the actual upload result.
+    // If this attempt is a transparent AUTO-RESUME recovery (byte-persisted image
+    // restored after a reload), emit `upload_recovered` (recovery_type:
+    // 'auto_resume') INSTEAD, since "recovered" is the more specific outcome.
+    const completedItem = get().items.find((i) => i.id === id) ?? startItemSnapshot;
+    if (autoResumeIds.has(id)) {
+      autoResumeIds.delete(id);
+      trackEvent("upload_recovered", {
+        ...uploadParams(completedItem, eventSlug),
+        recovery_type: "auto_resume",
+      });
+    } else {
+      trackEvent("upload_completed", uploadParams(completedItem, eventSlug));
+    }
+
     // Fire-and-forget cleanup (removes record + persisted bytes); must not block
     // marking the item successful in the UI (Req 11.6).
     void uploadQueue.remove(id);
@@ -759,6 +852,16 @@ const useUploadStore = create<UploadStore>((set, get) => {
         };
       }),
     }));
+    // GA4: a real upload attempt is starting NOW (not at enqueue time). This is
+    // the single place where an attempt actually begins (initial start, retry,
+    // and auto-resume all funnel through here), so it is the correct and only
+    // place to emit `upload_started`. Read the just-updated item for accurate
+    // params (e.g. the bumped retryCount on a retry). Non-blocking.
+    const startedItem = get().items.find((i) => i.id === id);
+    if (startedItem) {
+      trackEvent("upload_started", uploadParams(startedItem, eventSlug));
+    }
+
     // Fire-and-forget; processOne manages its own slot release + queue pump,
     // guarded by the captured attempt token.
     void processOne(id, nextAttempt, eventSlug);
@@ -902,8 +1005,21 @@ const useUploadStore = create<UploadStore>((set, get) => {
               : i
           ),
         }));
+        // GA4: a valid retry was SCHEDULED (re-queued behind the concurrency
+        // cap). Only reached after the retryable + cap checks above, so it never
+        // fires for a non-retryable state or an exhausted item. Read the item
+        // AFTER the bump so retry_count reflects the scheduled attempt.
+        const requeued = get().items.find((i) => i.id === id);
+        if (requeued) trackEvent("upload_retry", uploadParams(requeued, getEventSlug()));
         return;
       }
+
+      // GA4: a valid retry is STARTING immediately. Emit BEFORE startItem so the
+      // params show the pre-start retry_count (startItem will bump it and emit
+      // its own `upload_started`); this event marks the user's retry action,
+      // distinct from the attempt-start signal. Only reached for a retryable,
+      // non-exhausted item, so it never fires for an invalid retry.
+      trackEvent("upload_retry", uploadParams(item, getEventSlug()));
 
       // A slot is free: start immediately with a fresh AbortController and a
       // bumped attempt token, reusing the SAME uploadId (item.id) — never a new
@@ -954,9 +1070,40 @@ const useUploadStore = create<UploadStore>((set, get) => {
           confirmBody.blurhash = r.blurhash;
         }
 
+        // GA4: the user is retrying ONLY the confirm of an already-uploaded Blob.
+        // Emitted here — where the confirm POST is actually attempted — and NOT
+        // on the earlier "nothing to confirm against" early return (no POST
+        // happens there). Built from the persisted record. Non-blocking.
+        trackEvent("upload_confirm_retry", {
+          upload_id: id,
+          event_slug: eventSlug || undefined,
+          content_type: r.contentType || undefined,
+          file_size: r.originalSize,
+          processed_size:
+            typeof r.processedSize === "number" && r.processedSize > 0
+              ? r.processedSize
+              : undefined,
+        });
+
         try {
           const media = await postConfirm(eventSlug, confirmBody);
           appendMediaToEventStore(media);
+          // GA4: a user-driven confirm-only retry that SUCCEEDED recovers an
+          // upload whose Blob already existed. This is the same outcome the
+          // confirm-only recovery pass emits, so use `upload_recovered` with
+          // recovery_type 'confirm_only'. Build params from the persisted record
+          // (the surfaced item lacks processed size). Non-blocking.
+          trackEvent("upload_recovered", {
+            upload_id: id,
+            event_slug: eventSlug || undefined,
+            content_type: r.contentType || undefined,
+            file_size: r.originalSize,
+            processed_size:
+              typeof r.processedSize === "number" && r.processedSize > 0
+                ? r.processedSize
+                : undefined,
+            recovery_type: "confirm_only",
+          });
           await uploadQueue.remove(id); // removes record + bytes
           // Remove the surfaced recovery item; the Media is now in the gallery.
           set((state) => ({ items: state.items.filter((i) => i.id !== id) }));
@@ -991,6 +1138,13 @@ const useUploadStore = create<UploadStore>((set, get) => {
         // the token is now bumped, the aborted attempt's own catch/finally
         // no-ops and will NOT double-release the slot — so we release it here.
         item.abort.abort();
+        // GA4: a genuine cancel of an in-flight upload. Emitted here (not in
+        // processOne) because this is where the user action actually cancels it;
+        // the aborted attempt's own continuation no-ops (token bumped) so it
+        // cannot ALSO emit a failed/canceled event — no duplicate. Read from the
+        // pre-abort `item` (still valid). Non-blocking.
+        trackEvent("upload_canceled", uploadParams(item, getEventSlug()));
+        autoResumeIds.delete(id);
         set((state) => ({
           activeCount: Math.max(0, state.activeCount - 1),
           items: state.items.map((i) =>
@@ -1013,6 +1167,11 @@ const useUploadStore = create<UploadStore>((set, get) => {
       // uploading and must NOT call Blob/confirm. Bump the token, mark canceled
       // (so processQueue never picks it up — it filters on `queued`), free the
       // object URL, and remove the queue record.
+      // GA4: a genuine cancel of a not-yet-started (queued) item. The early
+      // returns above already excluded already-'success' and already-'canceled'
+      // items, so this fires at most once for a real cancellation. Non-blocking.
+      trackEvent("upload_canceled", uploadParams(item, getEventSlug()));
+      autoResumeIds.delete(id);
       URL.revokeObjectURL(item.previewUrl);
       void uploadQueue.remove(id);
       set((state) => ({
@@ -1259,6 +1418,12 @@ const useUploadStore = create<UploadStore>((set, get) => {
       // drive them through the SAME machinery under MAX_CONCURRENT. No second
       // concurrency manager; startItem's attempt guard governs each.
       if (toResume.length > 0) {
+        // GA4 (analytics-only): mark these ids as AUTO-RESUME so that when they
+        // later complete in processOne they emit `upload_recovered`
+        // (recovery_type: 'auto_resume') instead of a plain `upload_completed`.
+        // This is a transient in-memory marker ONLY — it does not touch item
+        // state, the queue, or IndexedDB, so it cannot affect upload behavior.
+        for (const it of toResume) autoResumeIds.add(it.id);
         set((state) => ({ items: [...state.items, ...toResume] }));
       }
 
@@ -1314,6 +1479,21 @@ const useUploadStore = create<UploadStore>((set, get) => {
         try {
           const media = await postConfirm(eventSlug, confirmBody);
           appendMediaToEventStore(media);
+          // GA4: cross-reload confirm-only recovery SUCCEEDED — the Blob already
+          // existed and the idempotent confirm completed it. Emitted only here,
+          // after a real success (never merely for finding a record). Built from
+          // the persisted record. Non-blocking.
+          trackEvent("upload_recovered", {
+            upload_id: r.uploadId,
+            event_slug: eventSlug || undefined,
+            content_type: r.contentType || undefined,
+            file_size: r.originalSize,
+            processed_size:
+              typeof r.processedSize === "number" && r.processedSize > 0
+                ? r.processedSize
+                : undefined,
+            recovery_type: "confirm_only",
+          });
           await uploadQueue.remove(r.uploadId);
         } catch (error) {
           // Confirm failed (Blob missing, 4xx/409, or network). Do NOT mark
