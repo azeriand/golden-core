@@ -101,7 +101,7 @@ if (!jwtSecret) {
       ) AS liked
       FROM events
       LEFT JOIN sections ON events.event_id = sections.event_id
-      LEFT JOIN media ON sections.section_id = media.section_id
+      LEFT JOIN media ON sections.section_id = media.section_id AND sections.event_id = media.event_id
       LEFT JOIN users ON media.user_id = users.user_id
       LEFT JOIN (
           SELECT media_id, COUNT(*) AS likes
