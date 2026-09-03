@@ -5,8 +5,8 @@ import { NextRequest } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { put } from "@vercel/blob";
-import exifr from 'exifr';
 import { generateBlurhash } from '@/lib/blurhash';
+import { extractCreationTime } from '@/lib/media-metadata';
 
 export const maxDuration = 60;
 
@@ -15,6 +15,8 @@ const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 
 const ALL_MEDIA_EXTENSIONS = new Set([...VIDEO_EXTENSIONS, ...IMAGE_EXTENSIONS]);
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+
+const FALLBACK_SECTION_NAME = 'Sin clasificar';
 
 const MIME_FROM_EXTENSION: Record<string, string> = {
     jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
@@ -108,28 +110,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         return new Response("File size exceeds 100 MB limit", { status: 400 });
     }
 
-    // Extract metadata from images
-    let photoTime: string | null = null;
-    let blurhash: string | null = null;
+    // Extract creation time-of-day for automatic categorization.
+    // Applies to both images and videos; categorization is based on the
+    // creation time (never the date). Best-effort: null falls back to the
+    // "Sin clasificar" section.
+    const photoTime: string | null = await extractCreationTime(file);
 
+    // Generate a blurhash preview for images only.
+    let blurhash: string | null = null;
     if (isImage) {
         const arrayBuffer = await file.arrayBuffer();
         blurhash = await generateBlurhash(arrayBuffer);
-
-        try {
-            const exif = await exifr.parse(arrayBuffer);
-            const dateTimeOriginal = exif?.DateTimeOriginal;
-            const photoOffset = exif?.OffsetTimeOriginal;
-
-            if (dateTimeOriginal && photoOffset) {
-                const [hours, minutes] = photoOffset.split(":").map(Number);
-                const offsetMinutes = (hours >= 0 ? 1 : -1) * (Math.abs(hours) * 60 + minutes);
-                const localDate = new Date(dateTimeOriginal.getTime() + offsetMinutes * 60 * 1000);
-                photoTime = localDate.toISOString().slice(11, 16);
-            }
-        } catch {
-            // EXIF parsing is best-effort
-        }
     }
 
     // Find event
@@ -150,26 +141,26 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         if (photoTime) {
             const sectionResult = await pool.query(
                 `SELECT section_id FROM sections
-                 WHERE event_id = $1 AND section_name <> 'Sin clasificar'
-                 AND start_date::time <= $2::time AND finish_date::time >= $2::time
+                 WHERE event_id = $1 AND section_name <> $2
+                 AND start_date::time <= $3::time AND finish_date::time >= $3::time
                  LIMIT 1`,
-                [eventId, photoTime]
+                [eventId, FALLBACK_SECTION_NAME, photoTime]
             );
 
             if (sectionResult.rows.length > 0) {
                 sectionId = sectionResult.rows[0].section_id;
             } else {
                 const fallback = await pool.query(
-                    `SELECT section_id FROM sections WHERE event_id = $1 AND section_name = 'Sin clasificar' LIMIT 1`,
-                    [eventId]
+                    `SELECT section_id FROM sections WHERE event_id = $1 AND section_name = $2 LIMIT 1`,
+                    [eventId, FALLBACK_SECTION_NAME]
                 );
                 if (fallback.rows.length === 0) return new Response("Default section not found", { status: 500 });
                 sectionId = fallback.rows[0].section_id;
             }
         } else {
             const fallback = await pool.query(
-                `SELECT section_id FROM sections WHERE event_id = $1 AND section_name = 'Sin clasificar' LIMIT 1`,
-                [eventId]
+                `SELECT section_id FROM sections WHERE event_id = $1 AND section_name = $2 LIMIT 1`,
+                [eventId, FALLBACK_SECTION_NAME]
             );
             if (fallback.rows.length === 0) return new Response("Default section not found", { status: 500 });
             sectionId = fallback.rows[0].section_id;
