@@ -16,6 +16,8 @@ const ALL_MEDIA_EXTENSIONS = new Set([...VIDEO_EXTENSIONS, ...IMAGE_EXTENSIONS])
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
 
+const FALLBACK_SECTION_NAME = 'Sin clasificar';
+
 const MIME_FROM_EXTENSION: Record<string, string> = {
     jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
     webp: 'image/webp', heic: 'image/heic', heif: 'image/heif',
@@ -139,26 +141,26 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         if (photoTime) {
             const sectionResult = await pool.query(
                 `SELECT section_id FROM sections
-                 WHERE event_id = $1 AND section_name <> 'Sin clasificar'
-                 AND start_date::time <= $2::time AND finish_date::time >= $2::time
+                 WHERE event_id = $1 AND section_name <> $2
+                 AND start_date::time <= $3::time AND finish_date::time >= $3::time
                  LIMIT 1`,
-                [eventId, photoTime]
+                [eventId, FALLBACK_SECTION_NAME, photoTime]
             );
 
             if (sectionResult.rows.length > 0) {
                 sectionId = sectionResult.rows[0].section_id;
             } else {
                 const fallback = await pool.query(
-                    `SELECT section_id FROM sections WHERE event_id = $1 AND section_name = 'Sin clasificar' LIMIT 1`,
-                    [eventId]
+                    `SELECT section_id FROM sections WHERE event_id = $1 AND section_name = $2 LIMIT 1`,
+                    [eventId, FALLBACK_SECTION_NAME]
                 );
                 if (fallback.rows.length === 0) return new Response("Default section not found", { status: 500 });
                 sectionId = fallback.rows[0].section_id;
             }
         } else {
             const fallback = await pool.query(
-                `SELECT section_id FROM sections WHERE event_id = $1 AND section_name = 'Sin clasificar' LIMIT 1`,
-                [eventId]
+                `SELECT section_id FROM sections WHERE event_id = $1 AND section_name = $2 LIMIT 1`,
+                [eventId, FALLBACK_SECTION_NAME]
             );
             if (fallback.rows.length === 0) return new Response("Default section not found", { status: 500 });
             sectionId = fallback.rows[0].section_id;

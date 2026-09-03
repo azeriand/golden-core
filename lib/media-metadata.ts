@@ -210,6 +210,21 @@ function extractVideoTime(arrayBuffer: ArrayBuffer): Date | null {
     );
 }
 
+const VIDEO_EXTENSIONS = new Set(["mov", "mp4", "webm", "3gp", "3gpp", "avi", "mkv", "m4v"]);
+const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "heic", "heif", "gif", "bmp", "tiff"]);
+
+/**
+ * Determines whether a file is a video or image based on its extension first,
+ * then MIME type. iOS Safari often sends HEIC/HEIF files with an empty or
+ * "application/octet-stream" MIME type, so relying on file.type alone misses them.
+ */
+function classifyMedia(file: File): "image" | "video" | null {
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+    if (VIDEO_EXTENSIONS.has(ext) || file.type.startsWith("video/")) return "video";
+    if (IMAGE_EXTENSIONS.has(ext) || file.type.startsWith("image/")) return "image";
+    return null;
+}
+
 /**
  * Extracts the creation time-of-day ("HH:MM") from a media file's metadata.
  *
@@ -219,15 +234,23 @@ function extractVideoTime(arrayBuffer: ArrayBuffer): Date | null {
  * key (local time, written by iOS and recent Android) and falling back to the
  * `mvhd` atom (UTC). Returns null when no reliable creation timestamp is
  * available so the caller can fall back to a default section.
+ *
+ * Media type is determined by file extension first, then MIME type, because
+ * iOS Safari sends HEIC/HEIF files with an empty or generic MIME type.
  */
 export async function extractCreationTime(file: File): Promise<string | null> {
     try {
+        const kind = classifyMedia(file);
+        if (!kind) {
+            return null;
+        }
+
         const arrayBuffer = await file.arrayBuffer();
 
         let creationDate: Date | null = null;
-        if (file.type.startsWith("video/")) {
+        if (kind === "video") {
             creationDate = extractVideoTime(arrayBuffer);
-        } else if (file.type.startsWith("image/")) {
+        } else {
             creationDate = await extractImageTime(arrayBuffer);
         }
 
