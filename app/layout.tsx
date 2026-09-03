@@ -1,4 +1,5 @@
 "use client"
+import { GoogleAnalytics } from '@next/third-parties/google';
 import 'azeriand-library/dist/styles.css';
 import AuthPopup from './components/auth-popup';
 import Navbar from './components/navbar';
@@ -32,6 +33,7 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
       </head>
       <body className="min-h-screen">
+        <GoogleAnalytics gaId="G-02YJDSDMZR" />
         <ServiceWorkerRegister />
         <ErrorPopup />
         {!loading && !authenticated && !isDemoRoute && (<AuthPopup />)}
