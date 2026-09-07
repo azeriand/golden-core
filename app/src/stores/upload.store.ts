@@ -6,6 +6,12 @@ import useAuthStore from "./auth.store";
 import { uploadToBlob, type BlobUploadResult } from "@/lib/blob-upload-client";
 import { uploadQueue, type QueueRecord, type QueueStatus } from "@/lib/upload-queue";
 import { trackEvent } from "@/app/src/lib/analytics";
+import { extractCreationTime } from "@/lib/media-metadata";
+import {
+  UNCLASSIFIED_SECTION_ID,
+  UNCLASSIFIED_SECTION_NAME,
+} from "@/lib/sections";
+import type { Section } from "@/app/dto/section";
 
 // ---------------------------------------------------------------------------
 // upload.store.ts — Task 9.2 (design Component 7)
@@ -96,6 +102,17 @@ export interface UploadItem {
    * read it.
    */
   date: string;
+  /**
+   * AUTO-CATEGORIZATION TIME (creation time-of-day, "HH:MM"). Extracted from the
+   * file's EXIF (images) or MP4/MOV container metadata (videos) at enqueue via
+   * `extractCreationTime`, and threaded through the upload-token handshake +
+   * confirm body so the server can place the media in the matching section
+   * (never the calendar date). null when the file has no reliable creation time
+   * or extraction failed — the server then leaves the media unclassified so it
+   * falls back to the hardcoded "Sin clasificar" section. Persisted in the queue
+   * record so confirm-only recovery after a reload carries the same value.
+   */
+  creationTime: string | null;
   /**
    * STALE-ASYNC GUARD (Task 9.3). A monotonically increasing token identifying
    * the CURRENT attempt for this item. `processOne` captures this value when it
@@ -387,6 +404,9 @@ function toRecord(
     // date — never substituted with updatedAt/now — so every persisted snapshot
     // carries the same immutable value.
     date: item.date,
+    // Auto-categorization creation time-of-day, if already resolved (Req 9).
+    // resolveCreationTime also patches this onto the record when it finishes.
+    creationTime: item.creationTime,
     updatedAt: Date.now(),
   };
 }
@@ -396,17 +416,39 @@ function appendMediaToEventStore(media: Media): void {
   const eventState = useEventStore.getState();
   if (!eventState.event) return;
 
-  const sections = eventState.event.sections.map((section) => {
-    if (String(section.section_id) === String(media.section_id)) {
+  // Place the media in the SAME section the server (GET) would place it in on
+  // the next refresh, so the optimistic view matches the persisted state:
+  //   - a real section_id matches that section;
+  //   - a NULL section_id (unclassified) matches the synthetic "Sin clasificar"
+  //     section (id === UNCLASSIFIED_SECTION_ID).
+  // It NEVER falls back to sections[0]: doing so dumped every unclassified
+  // upload into the first (earliest) section, which then vanished on refresh
+  // once GET correctly grouped them under "Sin clasificar".
+  const targetKey =
+    media.section_id == null ? UNCLASSIFIED_SECTION_ID : String(media.section_id);
+
+  let matched = false;
+  const sections: Section[] = eventState.event.sections.map((section) => {
+    if (String(section.section_id) === targetKey) {
+      matched = true;
       return { ...section, media: [...section.media, media] };
     }
     return section;
   });
 
-  // If media has no matching section, fall back to the first section.
-  const added = sections.some((s) => s.media.includes(media));
-  if (!added && sections.length > 0) {
-    sections[0] = { ...sections[0], media: [...sections[0].media, media] };
+  if (!matched) {
+    // The target section is not on screen yet. For unclassified media this is
+    // the common first-upload case: synthesize the "Sin clasificar" section
+    // exactly as GET would. A classified media whose real section is somehow
+    // not loaded also lands here so it is never silently dropped; the next
+    // refresh reconciles it into its real section.
+    sections.push({
+      section_id: UNCLASSIFIED_SECTION_ID,
+      section_name: UNCLASSIFIED_SECTION_NAME,
+      start_date: null,
+      finish_date: null,
+      media: [media],
+    });
   }
 
   useEventStore.setState({ event: { ...eventState.event, sections } });
@@ -452,6 +494,7 @@ function buildRecoverySurfaceItem(
       typeof r.thumbnailDataUrl === "string" ? r.thumbnailDataUrl : null,
     recovery,
     date: typeof r.date === "string" ? r.date : "",
+    creationTime: typeof r.creationTime === "string" ? r.creationTime : null,
     attempt: 0,
   };
 }
@@ -567,6 +610,27 @@ const useUploadStore = create<UploadStore>((set, get) => {
     }
     // eventSlug is accepted for symmetry / future per-event policy; unused today.
     void eventSlug;
+  };
+
+  /**
+   * Resolve an item's auto-categorization creation time-of-day ("HH:MM") from
+   * its file, memoizing the result on the item and the persisted queue record.
+   * Best-effort: `extractCreationTime` returns null (and never throws) when the
+   * file has no reliable EXIF/container creation time, so the media simply stays
+   * unclassified. Returns the resolved value (or null). Idempotent: if the item
+   * already has a creationTime, it is returned without re-reading the file.
+   */
+  const resolveCreationTime = async (item: UploadItem): Promise<string | null> => {
+    if (item.creationTime != null) return item.creationTime;
+
+    const creationTime = await extractCreationTime(item.file);
+    if (creationTime != null) {
+      // Persist on the live item and the queue record so both the same-session
+      // confirm and confirm-only recovery after a reload carry the same value.
+      patchItem(item.id, { creationTime });
+      void uploadQueue.patch(item.id, { creationTime });
+    }
+    return creationTime;
   };
 
   /**
@@ -697,6 +761,15 @@ const useUploadStore = create<UploadStore>((set, get) => {
     patchIfCurrent({ status: "uploading", progress: 0 });
     void uploadQueue.patch(id, { status: "uploading" });
 
+    // Ensure the auto-categorization creation time-of-day is resolved BEFORE the
+    // handshake so it can be carried in the signed tokenPayload (reconciliation)
+    // and the confirm body. Memoized: this awaits the enqueue-time extraction's
+    // result (or performs it now if that has not completed yet). Best-effort:
+    // null when the file has no reliable creation time — the media then stays
+    // unclassified and falls back to "Sin clasificar".
+    const creationTime = await resolveCreationTime(startItemSnapshot);
+    if (!isCurrentAttempt(id, attempt)) return;
+
     // Read the signal off THIS attempt's controller. If the attempt was already
     // superseded/invalidated, bail before starting the network transfer.
     if (!isCurrentAttempt(id, attempt)) return;
@@ -715,6 +788,10 @@ const useUploadStore = create<UploadStore>((set, get) => {
         // without fabricating a date. Same immutable value used by the
         // same-session confirm below and by confirm-only recovery.
         date: startItemSnapshot.date,
+        // Auto-categorization creation time-of-day (Req 9). Carried in the
+        // handshake clientPayload so the server signs it into the tokenPayload
+        // and can classify during onUploadCompleted reconciliation.
+        creationTime,
         onProgress: (pct) => setProgress(id, attempt, pct),
         signal,
       });
@@ -776,8 +853,9 @@ const useUploadStore = create<UploadStore>((set, get) => {
     try {
       // Use the item's captured enqueue-time date (Req 6.6, 14.10) — the SAME
       // value persisted in the queue record and used by confirm-only recovery,
-      // NOT a fresh confirm-time timestamp.
-      media = await confirmUpload(eventSlug, result, startItemSnapshot.date);
+      // NOT a fresh confirm-time timestamp. `creationTime` drives server-side
+      // auto-categorization (null => unclassified / "Sin clasificar").
+      media = await confirmUpload(eventSlug, result, startItemSnapshot.date, creationTime);
     } catch (error) {
       // If canceled/dismissed/retried during confirm, the outcome of THIS
       // attempt is irrelevant: no-op (do not persist failure over a newer
@@ -917,6 +995,9 @@ const useUploadStore = create<UploadStore>((set, get) => {
         // all use ONE identical date. Retry reuses this item (same date); it is
         // never recomputed.
         date: new Date().toISOString(),
+        // Resolved asynchronously just below (best-effort EXIF/container read)
+        // and again defensively before upload in processOne. null until then.
+        creationTime: null,
         attempt: 0,
       }));
 
@@ -936,7 +1017,14 @@ const useUploadStore = create<UploadStore>((set, get) => {
       // metadata record is written by processOne's `uploadQueue.put(toRecord…)`
       // which already carries kind/hasBytes/oversized/thumbnailDataUrl.
       for (const item of newItems) {
-        void persistEnqueuePayload(item, _eventSlug);
+        // Persist the initial record FIRST, THEN resolve+patch the creation
+        // time. Chaining avoids a race where the initial put (which carries the
+        // still-null creationTime) lands AFTER the extraction's patch and
+        // clobbers it in the persisted record. The same-session confirm does not
+        // depend on this ordering (processOne re-resolves from the live item),
+        // but confirm-only recovery reads the persisted value, so it must not be
+        // lost. Best-effort/fire-and-forget: never blocks enqueue or the upload.
+        void persistEnqueuePayload(item, _eventSlug).then(() => resolveCreationTime(item));
       }
 
       get().processQueue();
@@ -1065,6 +1153,9 @@ const useUploadStore = create<UploadStore>((set, get) => {
               ? r.processedSize
               : r.originalSize,
           date: typeof r.date === "string" ? r.date : item.date,
+          // Carry the persisted creation time so a confirm-only retry classifies
+          // identically to the same-session confirm (null => unclassified).
+          creationTime: typeof r.creationTime === "string" ? r.creationTime : null,
         };
         if (typeof r.blurhash === "string" && r.blurhash.length > 0) {
           confirmBody.blurhash = r.blurhash;
@@ -1371,6 +1462,9 @@ const useUploadStore = create<UploadStore>((set, get) => {
               blurhash: typeof r.blurhash === "string" ? r.blurhash : null,
               thumbnailDataUrl: null,
               recovery: null,
+              // Seed from the persisted record; processOne re-resolves it from
+              // the resumed bytes if absent, so classification survives a reload.
+              creationTime: typeof r.creationTime === "string" ? r.creationTime : null,
               date: typeof r.date === "string" ? r.date : new Date().toISOString(),
               attempt: 0,
             });
@@ -1469,6 +1563,9 @@ const useUploadStore = create<UploadStore>((set, get) => {
           // Persisted enqueue-time date — the whole point of confirm-only
           // recovery (Req 14.10). Never fabricated; never updatedAt.
           date: r.date,
+          // Carry the persisted creation time so cross-reload recovery
+          // classifies identically to the same-session confirm.
+          creationTime: typeof r.creationTime === "string" ? r.creationTime : null,
         };
         // Carry the persisted client BlurHash so the recovered media renders
         // its placeholder immediately, matching the same-session confirm.
@@ -1532,6 +1629,10 @@ interface ConfirmBody {
   processedSize: number;
   date: string;
   blurhash?: string;
+  // Auto-categorization creation time-of-day ("HH:MM"), or null when the file
+  // had no reliable creation time. The server matches it to a section; null (or
+  // no match) leaves the media unclassified under "Sin clasificar".
+  creationTime?: string | null;
 }
 
 /**
@@ -1545,7 +1646,8 @@ interface ConfirmBody {
 async function confirmUpload(
   eventSlug: string,
   result: BlobUploadResult,
-  date: string
+  date: string,
+  creationTime: string | null
 ): Promise<Media> {
   const body: ConfirmBody = {
     uploadId: result.uploadId,
@@ -1557,6 +1659,8 @@ async function confirmUpload(
     // Enqueue-time date threaded from the item (identical across enqueue,
     // persisted record, same-session confirm, and recovery confirm).
     date,
+    // Auto-categorization creation time-of-day (null => unclassified).
+    creationTime,
   };
   if (result.blurhash != null) {
     body.blurhash = result.blurhash;

@@ -7,6 +7,7 @@ import { cookies } from 'next/headers';
 import { put } from "@vercel/blob";
 import { generateBlurhash } from '@/lib/blurhash';
 import { extractCreationTime } from '@/lib/media-metadata';
+import { resolveSectionIdByTime } from '@/lib/section-match';
 
 import { isDemoEvent, demoGuardResponse } from '@/lib/demo-guard';
 
@@ -141,19 +142,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // media surfaces under the hardcoded "Sin clasificar" fallback section.
     let sectionId: number | null = null;
     try {
-        if (photoTime) {
-            const sectionResult = await pool.query(
-                `SELECT section_id FROM sections
-                 WHERE event_id = $1
-                 AND start_date::time <= $2::time AND finish_date::time >= $2::time
-                 LIMIT 1`,
-                [eventId, photoTime]
-            );
-
-            if (sectionResult.rows.length > 0) {
-                sectionId = sectionResult.rows[0].section_id;
-            }
-        }
+        sectionId = await resolveSectionIdByTime(pool, eventId, photoTime);
     } catch (error) {
         console.error("Error finding section:", error);
         return new Response("Error finding section", { status: 500 });

@@ -62,6 +62,14 @@ export interface BlobUploadArgs {
      * forwards it as-is.
      */
     date: string;
+    /**
+     * Auto-categorization creation time-of-day ("HH:MM"), or null when the file
+     * had no reliable EXIF/container creation time. Forwarded in the handshake
+     * clientPayload so the server signs it into the tokenPayload and can classify
+     * the media during onUploadCompleted reconciliation (production). The
+     * same-session confirm sends its own copy in the confirm body. Not a secret.
+     */
+    creationTime: string | null;
     /** Optional progress callback, reported as a whole/float 0-100 percentage. */
     onProgress?: (percentage: number) => void;
     /** Optional AbortSignal to cancel the in-flight upload. */
@@ -133,7 +141,7 @@ function isImageFile(file: File): boolean {
 export async function uploadToBlob(
     args: BlobUploadArgs,
 ): Promise<BlobUploadResult> {
-    const { file, uploadId, eventSlug, eventId, date, onProgress, signal } = args;
+    const { file, uploadId, eventSlug, eventId, date, creationTime, onProgress, signal } = args;
 
     // 2 + 3. Determine the body to upload. Videos/non-images are uploaded
     // byte-for-byte (the original File); images may be preprocessed.
@@ -181,6 +189,10 @@ export async function uploadToBlob(
         // put it in the signed tokenPayload and reconstruct media.date during
         // onUploadCompleted reconciliation without fabricating a date. Not a secret.
         date,
+        // Auto-categorization creation time-of-day (Req 9), forwarded so the
+        // server can sign it into the tokenPayload and classify the media during
+        // onUploadCompleted reconciliation. null => unclassified. Not a secret.
+        creationTime,
     });
 
     // 6. Direct-to-Blob upload. multipart:true for ALL uploads gives automatic
