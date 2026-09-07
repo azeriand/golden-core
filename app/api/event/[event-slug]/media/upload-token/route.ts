@@ -21,6 +21,7 @@ import { head, BlobNotFoundError } from '@vercel/blob';
 import pool from '@/lib/db';
 import { verifyRequest } from '@/lib/auth';
 import { isDemoEvent, isDemoUser, demoGuardResponse } from '@/lib/demo-guard';
+import { resolveSectionIdByTime, isValidTimeOfDay } from '@/lib/section-match';
 
 export const runtime = 'nodejs';
 
@@ -71,6 +72,10 @@ interface ParsedClientPayload {
     // onUploadCompleted reconciliation can reconstruct media.date (a NOT NULL
     // column) without fabricating one. Not a secret.
     date: string;
+    // Auto-categorization creation time-of-day ("HH:MM"), or null when the file
+    // had no reliable creation time. Threaded into the signed tokenPayload so
+    // reconciliation can classify the media into the matching section. Not a secret.
+    creationTime: string | null;
 }
 
 /**
@@ -113,6 +118,7 @@ function parseClientPayload(raw: string | null): ParsedClientPayload | { error: 
     const contentType = p.contentType;
     const size = p.size;
     const date = p.date;
+    const creationTime = p.creationTime;
 
     if (typeof uploadId !== 'string' || !UUID_RE.test(uploadId)) {
         return { error: 'Invalid uploadId' };
@@ -136,8 +142,19 @@ function parseClientPayload(raw: string | null): ParsedClientPayload | { error: 
     if (typeof date !== 'string' || date.length === 0 || Number.isNaN(Date.parse(date))) {
         return { error: 'Invalid date' };
     }
+    // creationTime is OPTIONAL: a "HH:MM"/"HH:MM:SS" string or null/absent.
+    // Reject only a malformed non-null value; treat missing/null as "no time"
+    // (media stays unclassified). Do NOT over-constrain — the server validates
+    // the format again via isValidTimeOfDay before matching a section.
+    let normalizedCreationTime: string | null = null;
+    if (creationTime !== undefined && creationTime !== null) {
+        if (!isValidTimeOfDay(creationTime)) {
+            return { error: 'Invalid creationTime' };
+        }
+        normalizedCreationTime = creationTime.trim();
+    }
 
-    return { uploadId, eventSlug, filename, contentType, size, date };
+    return { uploadId, eventSlug, filename, contentType, size, date, creationTime: normalizedCreationTime };
 }
 
 // --- onUploadCompleted reconciliation helpers (Task 5.3, design D1, Req 8.4) --
@@ -153,6 +170,9 @@ interface ParsedTokenPayload {
     userId: number;
     eventId: number;
     date: string;
+    // Auto-categorization creation time-of-day ("HH:MM") or null. Used to match
+    // a section during reconciliation; null (or no match) => unclassified.
+    creationTime: string | null;
 }
 
 /**
@@ -173,14 +193,19 @@ function parseTokenPayload(raw: string | null | undefined): ParsedTokenPayload |
     if (typeof obj !== 'object' || obj === null) return null;
 
     const p = obj as Record<string, unknown>;
-    const { uploadId, userId, eventId, date } = p;
+    const { uploadId, userId, eventId, date, creationTime } = p;
 
     if (typeof uploadId !== 'string' || !UUID_RE.test(uploadId)) return null;
     if (typeof userId !== 'number' || !Number.isFinite(userId)) return null;
     if (typeof eventId !== 'number' || !Number.isFinite(eventId)) return null;
     if (typeof date !== 'string' || date.length === 0) return null;
 
-    return { uploadId, userId, eventId, date };
+    // creationTime is optional in the signed payload; accept a valid time-of-day
+    // string or fall back to null (unclassified). A malformed value is ignored
+    // rather than failing reconciliation (the date is what makes the row valid).
+    const parsedCreationTime = isValidTimeOfDay(creationTime) ? creationTime.trim() : null;
+
+    return { uploadId, userId, eventId, date, creationTime: parsedCreationTime };
 }
 
 /**
@@ -307,6 +332,9 @@ export async function POST(
                         userId: user.userId,
                         eventId,
                         date: parsed.date,
+                        // Auto-categorization creation time-of-day (Req 9) — not
+                        // a secret — so reconciliation can classify the media.
+                        creationTime: parsed.creationTime,
                     }),
                 };
             },
@@ -438,11 +466,25 @@ export async function POST(
                         return; // no row
                     }
 
-                    // 6. No EXIF/creation time is available on this
-                    //    reconciliation path, so the media stays unclassified
-                    //    (section_id NULL) and surfaces under the hardcoded
+                    // 6. Classify by the creation time-of-day carried in the
+                    //    trusted tokenPayload (Req 9). No match / no time leaves
+                    //    section_id NULL so the media surfaces under the hardcoded
                     //    "Sin clasificar" fallback section (see lib/sections.ts).
-                    const sectionId: number | null = null;
+                    let sectionId: number | null = null;
+                    try {
+                        sectionId = await resolveSectionIdByTime(
+                            pool,
+                            parsed.eventId,
+                            parsed.creationTime,
+                        );
+                    } catch (dbErr) {
+                        // Transient DB error resolving the section — allow retry.
+                        console.error(
+                            'onUploadCompleted: error finding section (will allow retry)',
+                            dbErr,
+                        );
+                        throw dbErr;
+                    }
 
                     // 7. IDEMPOTENT INSERT — mirrors confirm's INSERT exactly
                     //    (same columns + ON CONFLICT (upload_id) DO NOTHING). If
