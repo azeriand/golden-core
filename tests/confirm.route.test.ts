@@ -127,6 +127,9 @@ interface QueryPlan {
     section?: unknown[]; // rows for the sections SELECT
     insert?: unknown[] | (() => never); // rows for INSERT, or a thrower
     existing?: unknown[]; // rows for the on-conflict SELECT
+    // rows for the on-conflict reconciliation UPDATE (`UPDATE media SET
+    // section_id ... RETURNING *`). Defaults to empty (no-op update).
+    update?: unknown[];
     // rows for shapeMediaRow's DTO-enrichment SELECT (`... FROM users LEFT JOIN
     // likes ...`). Defaults to a stable username with 0 likes / liked=false —
     // the natural values for a freshly created media row.
@@ -146,6 +149,9 @@ function planQueries(plan: QueryPlan): void {
                 (plan.insert as () => never)();
             }
             return { rows: plan.insert ?? [] };
+        }
+        if (/UPDATE media SET section_id/i.test(sql)) {
+            return { rows: plan.update ?? [] };
         }
         if (/SELECT \* FROM media/i.test(sql)) {
             return { rows: plan.existing ?? [] };
@@ -427,6 +433,58 @@ describe('confirm route — idempotent insert', () => {
             /INSERT INTO media/i.test(c[0] as string),
         );
         expect(insertCalled).toBe(false);
+    });
+
+    it('reconciles section on conflict: adopts the computed section when the existing row is unclassified', async () => {
+        // The webhook already inserted the row UNCLASSIFIED (section_id NULL).
+        // Confirm computes a real section (20:39 -> SECTION_ID) and must UPDATE
+        // the existing NULL row so it does not fall back to "Sin clasificar".
+        planQueries({
+            section: [{ section_id: SECTION_ID }],
+            insert: [], // ON CONFLICT DO NOTHING -> no inserted row
+            existing: [{
+                media_id: 7, upload_id: VALID_UUID, content: 'blob', user_id: 5,
+                type: 'image/jpeg', date: FIXED_DATE, section_id: null, blurhash: null,
+            }],
+            update: [{
+                media_id: 7, upload_id: VALID_UUID, content: 'blob', user_id: 5,
+                type: 'image/jpeg', date: FIXED_DATE, section_id: SECTION_ID, blurhash: null,
+            }],
+        });
+
+        const res = await POST(makeRequest(validBody({ creationTime: '20:39' })), params());
+
+        expect(res.status).toBe(200);
+        // The reconciliation UPDATE ran, guarded to section_id IS NULL.
+        const updateCall = queryMock.mock.calls.find((c) =>
+            /UPDATE media SET section_id/i.test(c[0] as string),
+        );
+        expect(updateCall).toBeTruthy();
+        expect((updateCall![1] as unknown[])[0]).toBe(SECTION_ID);
+        const body = await res.json();
+        expect(body.section_id).toBe(SECTION_ID);
+    });
+
+    it('does NOT reconcile on conflict when the existing row is already classified', async () => {
+        // Existing row already has a (possibly user-chosen) section — never override.
+        planQueries({
+            section: [{ section_id: SECTION_ID }],
+            insert: [],
+            existing: [{
+                media_id: 7, upload_id: VALID_UUID, content: 'blob', user_id: 5,
+                type: 'image/jpeg', date: FIXED_DATE, section_id: 555, blurhash: null,
+            }],
+        });
+
+        const res = await POST(makeRequest(validBody({ creationTime: '20:39' })), params());
+
+        expect(res.status).toBe(200);
+        const updateCalled = queryMock.mock.calls.some((c) =>
+            /UPDATE media SET section_id/i.test(c[0] as string),
+        );
+        expect(updateCalled).toBe(false);
+        const body = await res.json();
+        expect(body.section_id).toBe(555);
     });
 
     it('returns 200 with a Media-DTO-shaped existing row when ON CONFLICT yields no inserted row', async () => {
