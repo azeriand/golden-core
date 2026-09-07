@@ -5,6 +5,46 @@ import LikeCounter from "./like-counter";
 import useEventStore from "../src/stores/event.store";
 import useMediaUiStore from "../src/stores/media-ui.store";
 
+// Map common MIME types to file extensions so downloads keep a valid extension.
+const MIME_TO_EXTENSION: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/gif": "gif",
+    "image/webp": "webp",
+    "image/heic": "heic",
+    "image/heif": "heif",
+    "image/avif": "avif",
+    "image/bmp": "bmp",
+    "image/svg+xml": "svg",
+    "video/mp4": "mp4",
+    "video/quicktime": "mov",
+    "video/webm": "webm",
+    "video/x-matroska": "mkv",
+    "video/x-msvideo": "avi",
+};
+
+// Derive a download filename with a proper extension. Prefer the server's
+// Content-Disposition, then fall back to the Content-Type, then to "bin".
+function getDownloadFilename(response: Response, mediaID: number): string {
+    const disposition = response.headers.get("Content-Disposition");
+    if (disposition) {
+        const match = disposition.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
+        if (match?.[1]) {
+            return decodeURIComponent(match[1].trim());
+        }
+    }
+
+    const contentType = (response.headers.get("Content-Type") || "")
+        .split(";")[0]
+        .trim()
+        .toLowerCase();
+    const extension =
+        MIME_TO_EXTENSION[contentType] || contentType.split("/")[1] || "bin";
+
+    return `media-${mediaID}.${extension}`;
+}
+
 export default function ZoomPhoto({ src, likes: initialLikes, mediaID, liked: initialLiked, type, eventSlug, onClose }: { src: string, likes: number, mediaID: number, liked: boolean, type: string | null, eventSlug: string, onClose: () => void }) {
     const { event } = useEventStore();
     const { downloading, downloadProgress } = useMediaUiStore();
@@ -36,6 +76,8 @@ export default function ZoomPhoto({ src, likes: initialLikes, mediaID, liked: in
             const contentLength = response.headers.get("Content-Length");
             const total = contentLength ? parseInt(contentLength, 10) : 0;
 
+            const filename = getDownloadFilename(response, mediaID);
+
             if (response.body) {
                 const reader = response.body.getReader();
                 const chunks: BlobPart[] = [];
@@ -59,7 +101,7 @@ export default function ZoomPhoto({ src, likes: initialLikes, mediaID, liked: in
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement("a");
                 link.href = url;
-                link.download = `media-${mediaID}`;
+                link.download = filename;
                 document.body.appendChild(link);
                 link.click();
                 link.remove();
@@ -69,7 +111,7 @@ export default function ZoomPhoto({ src, likes: initialLikes, mediaID, liked: in
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement("a");
                 link.href = url;
-                link.download = `media-${mediaID}`;
+                link.download = filename;
                 document.body.appendChild(link);
                 link.click();
                 link.remove();
