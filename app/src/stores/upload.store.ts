@@ -7,6 +7,11 @@ import { uploadToBlob, type BlobUploadResult } from "@/lib/blob-upload-client";
 import { uploadQueue, type QueueRecord, type QueueStatus } from "@/lib/upload-queue";
 import { trackEvent } from "@/app/src/lib/analytics";
 import { extractCreationTime } from "@/lib/media-metadata";
+import {
+  UNCLASSIFIED_SECTION_ID,
+  UNCLASSIFIED_SECTION_NAME,
+} from "@/lib/sections";
+import type { Section } from "@/app/dto/section";
 
 // ---------------------------------------------------------------------------
 // upload.store.ts — Task 9.2 (design Component 7)
@@ -411,17 +416,39 @@ function appendMediaToEventStore(media: Media): void {
   const eventState = useEventStore.getState();
   if (!eventState.event) return;
 
-  const sections = eventState.event.sections.map((section) => {
-    if (String(section.section_id) === String(media.section_id)) {
+  // Place the media in the SAME section the server (GET) would place it in on
+  // the next refresh, so the optimistic view matches the persisted state:
+  //   - a real section_id matches that section;
+  //   - a NULL section_id (unclassified) matches the synthetic "Sin clasificar"
+  //     section (id === UNCLASSIFIED_SECTION_ID).
+  // It NEVER falls back to sections[0]: doing so dumped every unclassified
+  // upload into the first (earliest) section, which then vanished on refresh
+  // once GET correctly grouped them under "Sin clasificar".
+  const targetKey =
+    media.section_id == null ? UNCLASSIFIED_SECTION_ID : String(media.section_id);
+
+  let matched = false;
+  const sections: Section[] = eventState.event.sections.map((section) => {
+    if (String(section.section_id) === targetKey) {
+      matched = true;
       return { ...section, media: [...section.media, media] };
     }
     return section;
   });
 
-  // If media has no matching section, fall back to the first section.
-  const added = sections.some((s) => s.media.includes(media));
-  if (!added && sections.length > 0) {
-    sections[0] = { ...sections[0], media: [...sections[0].media, media] };
+  if (!matched) {
+    // The target section is not on screen yet. For unclassified media this is
+    // the common first-upload case: synthesize the "Sin clasificar" section
+    // exactly as GET would. A classified media whose real section is somehow
+    // not loaded also lands here so it is never silently dropped; the next
+    // refresh reconciles it into its real section.
+    sections.push({
+      section_id: UNCLASSIFIED_SECTION_ID,
+      section_name: UNCLASSIFIED_SECTION_NAME,
+      start_date: null,
+      finish_date: null,
+      media: [media],
+    });
   }
 
   useEventStore.setState({ event: { ...eventState.event, sections } });
@@ -990,11 +1017,14 @@ const useUploadStore = create<UploadStore>((set, get) => {
       // metadata record is written by processOne's `uploadQueue.put(toRecord…)`
       // which already carries kind/hasBytes/oversized/thumbnailDataUrl.
       for (const item of newItems) {
-        void persistEnqueuePayload(item, _eventSlug);
-        // Extract the creation time-of-day for auto-categorization (best-effort,
-        // fire-and-forget). processOne also ensures it before upload, so a slow
-        // read here never delays the handshake with a stale null.
-        void resolveCreationTime(item);
+        // Persist the initial record FIRST, THEN resolve+patch the creation
+        // time. Chaining avoids a race where the initial put (which carries the
+        // still-null creationTime) lands AFTER the extraction's patch and
+        // clobbers it in the persisted record. The same-session confirm does not
+        // depend on this ordering (processOne re-resolves from the live item),
+        // but confirm-only recovery reads the persisted value, so it must not be
+        // lost. Best-effort/fire-and-forget: never blocks enqueue or the upload.
+        void persistEnqueuePayload(item, _eventSlug).then(() => resolveCreationTime(item));
       }
 
       get().processQueue();
