@@ -118,15 +118,6 @@ export interface QueueRecord {
      * otherwise.
      */
     thumbnailDataUrl?: string | null;
-    /**
-     * Auto-categorization creation time-of-day ("HH:MM") extracted from the
-     * file's EXIF/container metadata at enqueue (Req 9). Persisted so confirm-
-     * only recovery after a reload sends the SAME value the same-session confirm
-     * would have, classifying the media into the same section. Null/absent when
-     * the file had no reliable creation time. Optional/back-compat: legacy
-     * records without it are treated as unclassified.
-     */
-    creationTime?: string | null;
 }
 
 // --- IndexedDB configuration (single database, single object store) -----------

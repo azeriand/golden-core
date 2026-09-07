@@ -1,9 +1,4 @@
-// exifr is imported LAZILY (dynamic import inside extractImageTime) rather than
-// at module top-level. Its UMD build touches environment globals at evaluation
-// time, which throws in some bundler/test environments; deferring the import to
-// the moment an image is actually parsed keeps merely importing this module
-// (e.g. from the client upload store or the video-only path) side-effect free
-// and lighter to bundle.
+import exifr from "exifr";
 
 /**
  * Formats a Date's time-of-day as an "HH:MM" string using UTC getters.
@@ -35,7 +30,6 @@ function formatTimeOfDay(date: Date): string {
  * ModifyDate.
  */
 async function extractImageTime(arrayBuffer: ArrayBuffer): Promise<string | null> {
-    const { default: exifr } = await import("exifr");
     const metadata = await exifr.parse(arrayBuffer, { reviveValues: false });
     if (!metadata) {
         return null;

@@ -360,13 +360,13 @@ describe('confirm route — idempotent insert', () => {
         expect(insertValues).toContain(FIXED_DATE);
     });
 
-    it('inserts unclassified media (section_id NULL) when no creationTime is sent', async () => {
+    it('inserts unclassified media (section_id NULL) and does not query sections', async () => {
         planQueries({ insert: [{ media_id: 1, upload_id: VALID_UUID }] });
 
         await POST(makeRequest(validBody()), params());
 
-        // No creation time in the body → the media must be left unclassified so
-        // it falls back to the hardcoded "Sin clasificar" section on read.
+        // No EXIF/creation time here → the media must be left unclassified so it
+        // falls back to the hardcoded "Sin clasificar" section on read.
         const insertCall = queryMock.mock.calls.find((c) =>
             /INSERT INTO media/i.test(c[0] as string),
         );
@@ -374,59 +374,11 @@ describe('confirm route — idempotent insert', () => {
         // section_id is the 5th column in the INSERT (index 4).
         expect(insertValues[4]).toBeNull();
 
-        // With no creationTime the route never runs the section-match query.
+        // The route no longer resolves a per-event "Sin clasificar" row.
         const sectionsQueried = queryMock.mock.calls.some((c) =>
             /FROM sections/i.test(c[0] as string),
         );
         expect(sectionsQueried).toBe(false);
-    });
-
-    it('classifies into the matching section when a creationTime is sent', async () => {
-        planQueries({
-            section: [{ section_id: SECTION_ID }],
-            insert: [{ media_id: 1, upload_id: VALID_UUID }],
-        });
-
-        await POST(makeRequest(validBody({ creationTime: '20:39' })), params());
-
-        // The section-match query must run with the creation time...
-        const sectionCall = queryMock.mock.calls.find((c) =>
-            /FROM sections/i.test(c[0] as string),
-        );
-        expect(sectionCall).toBeTruthy();
-        expect((sectionCall![1] as unknown[])).toContain('20:39');
-
-        // ...and the resolved section_id must be persisted on the media row.
-        const insertCall = queryMock.mock.calls.find((c) =>
-            /INSERT INTO media/i.test(c[0] as string),
-        );
-        expect((insertCall![1] as unknown[])[4]).toBe(SECTION_ID);
-    });
-
-    it('leaves media unclassified when the creationTime matches no section', async () => {
-        planQueries({
-            section: [], // no section covers this time
-            insert: [{ media_id: 1, upload_id: VALID_UUID }],
-        });
-
-        await POST(makeRequest(validBody({ creationTime: '03:15' })), params());
-
-        const insertCall = queryMock.mock.calls.find((c) =>
-            /INSERT INTO media/i.test(c[0] as string),
-        );
-        expect((insertCall![1] as unknown[])[4]).toBeNull();
-    });
-
-    it('rejects a malformed creationTime with 400 and no insert', async () => {
-        planQueries({ insert: [{ media_id: 1, upload_id: VALID_UUID }] });
-
-        const res = await POST(makeRequest(validBody({ creationTime: '25:99' })), params());
-
-        expect(res.status).toBe(400);
-        const insertCalled = queryMock.mock.calls.some((c) =>
-            /INSERT INTO media/i.test(c[0] as string),
-        );
-        expect(insertCalled).toBe(false);
     });
 
     it('returns 200 with a Media-DTO-shaped existing row when ON CONFLICT yields no inserted row', async () => {
