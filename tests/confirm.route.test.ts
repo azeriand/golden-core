@@ -360,6 +360,27 @@ describe('confirm route — idempotent insert', () => {
         expect(insertValues).toContain(FIXED_DATE);
     });
 
+    it('inserts unclassified media (section_id NULL) and does not query sections', async () => {
+        planQueries({ insert: [{ media_id: 1, upload_id: VALID_UUID }] });
+
+        await POST(makeRequest(validBody()), params());
+
+        // No EXIF/creation time here → the media must be left unclassified so it
+        // falls back to the hardcoded "Sin clasificar" section on read.
+        const insertCall = queryMock.mock.calls.find((c) =>
+            /INSERT INTO media/i.test(c[0] as string),
+        );
+        const insertValues = insertCall![1] as unknown[];
+        // section_id is the 5th column in the INSERT (index 4).
+        expect(insertValues[4]).toBeNull();
+
+        // The route no longer resolves a per-event "Sin clasificar" row.
+        const sectionsQueried = queryMock.mock.calls.some((c) =>
+            /FROM sections/i.test(c[0] as string),
+        );
+        expect(sectionsQueried).toBe(false);
+    });
+
     it('returns 200 with a Media-DTO-shaped existing row when ON CONFLICT yields no inserted row', async () => {
         const existingRow = {
             media_id: 7,

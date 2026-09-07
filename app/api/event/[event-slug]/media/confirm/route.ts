@@ -317,29 +317,18 @@ export async function POST(
         return new Response('Could not verify upload', { status: 500 });
     }
 
-    // 7. Resolve section using EXISTING metadata semantics (Req 9).
-    //    The confirm route receives no raw file buffer, so no EXIF photo-time is
-    //    available here (unlike the legacy route). This matches the legacy
-    //    "no photoTime" branch: assign the default 'Sin clasificar' section.
+    // 7. Resolve section (Req 9). The confirm route receives no raw file buffer,
+    //    so no EXIF photo-time is available here (unlike the legacy route);
+    //    the media stays unclassified (section_id NULL).
     //    `type` reuses the client-resolved MIME (already validated against the
     //    same allowed image/video set as the legacy route). blurhash: persist
     //    the optional client-provided value as-is per design (Req 10) — no second
     //    server-side BlurHash implementation is introduced here.
-    let sectionId: number;
-    try {
-        const fallback = await pool.query(
-            `SELECT section_id FROM sections WHERE event_id = $1 AND section_name = 'Sin clasificar' LIMIT 1`,
-            [eventId],
-        );
-        if (fallback.rows.length === 0) {
-            console.error('confirm: default section not found for event', eventId);
-            return new Response('Default section not found', { status: 500 });
-        }
-        sectionId = fallback.rows[0].section_id;
-    } catch (error) {
-        console.error('confirm: error finding section', error);
-        return new Response('Error finding section', { status: 500 });
-    }
+    // No raw file buffer is available here, so no EXIF/creation time can be
+    // extracted. Leave section_id NULL; the media surfaces under the hardcoded
+    // "Sin clasificar" fallback section (see lib/sections.ts) and can be moved
+    // into a real section from the UI.
+    const sectionId: number | null = null;
 
     // 8 + 9. Idempotent insert keyed by upload_id (Req 7.5, 13.4, 22) with
     // Blob-succeeds/DB-fails cleanup (Req 8, 20, 21).

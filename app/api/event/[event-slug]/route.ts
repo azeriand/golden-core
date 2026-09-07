@@ -5,6 +5,9 @@ import pool from '@/lib/db';
 import { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { isDemoEvent, demoGuardResponse, isDemoUser } from '@/lib/demo-guard';
+import { UNCLASSIFIED_SECTION_ID, UNCLASSIFIED_SECTION_NAME } from '@/lib/sections';
+import { Section } from '@/app/dto/section';
+import { Media } from '@/app/dto/media';
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ "event-slug": string }> }) {
   const { "event-slug": eventSlug } = await params;
@@ -88,6 +91,11 @@ if (!jwtSecret) {
   }
 
   try {
+    // Fetch the event with its real sections AND all its media. Media is joined
+    // to sections by section_id, but media with a NULL section_id (unclassified)
+    // must still be returned — so the join is driven from media, not sections,
+    // and unclassified media is grouped under a hardcoded fallback section
+    // (see lib/sections.ts) that is synthesized below rather than stored in the DB.
     const result = await pool.query(
     `SELECT
       events.event_id,
@@ -100,6 +108,7 @@ if (!jwtSecret) {
       sections.finish_date,
       media.media_id,
       media.user_id,
+      media.section_id AS media_section_id,
       media.content,
       media.date,
       media.type,
@@ -113,8 +122,8 @@ if (!jwtSecret) {
           AND user_like.user_id = $2
       ) AS liked
       FROM events
-      LEFT JOIN sections ON events.event_id = sections.event_id
-      LEFT JOIN media ON sections.section_id = media.section_id AND sections.event_id = media.event_id
+      LEFT JOIN media ON events.event_id = media.event_id
+      LEFT JOIN sections ON sections.section_id = media.section_id AND sections.event_id = media.event_id
       LEFT JOIN users ON media.user_id = users.user_id
       LEFT JOIN (
           SELECT media_id, COUNT(*) AS likes
@@ -122,7 +131,7 @@ if (!jwtSecret) {
           GROUP BY media_id
       ) l ON media.media_id = l.media_id
       WHERE events.event_slug = $1
-      ORDER BY sections.section_id, media.date;`,
+      ORDER BY sections.section_id NULLS LAST, media.date;`,
       [eventSlug, userId]
     );
 
@@ -134,36 +143,69 @@ if (!jwtSecret) {
     }
 
     const rows = result.rows;
+
+    // Also load the event's real sections independently so that empty sections
+    // (no media yet) are still returned to the client. The media join above only
+    // surfaces sections that have media.
+    const sectionsResult = await pool.query(
+      `SELECT s.section_id, s.section_name, s.start_date, s.finish_date
+       FROM sections s
+       WHERE s.event_id = $1
+       ORDER BY s.section_id`,
+      [rows[0].event_id]
+    );
+
+    const sections: Section[] = sectionsResult.rows.map((s: Record<string, unknown>) => ({
+      section_id: s.section_id as number,
+      section_name: s.section_name as string,
+      start_date: s.start_date as string,
+      finish_date: s.finish_date as string,
+      media: [],
+    }));
+    const sectionById = new Map<string, Section>(sections.map((s) => [String(s.section_id), s]));
+
+    // Hardcoded fallback section for unclassified media (section_id IS NULL).
+    // Created lazily and appended last, only when there is unclassified media.
+    let unclassified: Section | null = null;
+    const ensureUnclassified = (): Section => {
+      if (!unclassified) {
+        unclassified = {
+          section_id: UNCLASSIFIED_SECTION_ID,
+          section_name: UNCLASSIFIED_SECTION_NAME,
+          start_date: null,
+          finish_date: null,
+          media: [],
+        };
+      }
+      return unclassified;
+    };
+
+    for (const row of rows) {
+      const { media_id, media_section_id, user_id, content, likes, liked, date, type, blurhash, username } = row;
+      if (media_id == null) continue; // event with no media (LEFT JOIN null row)
+
+      const mediaItem: Media = { media_id, user_id, content, likes, liked, date, type, section_id: media_section_id, blurhash, username };
+      const target =
+        media_section_id == null
+          ? ensureUnclassified()
+          : sectionById.get(String(media_section_id));
+
+      // A real section id that somehow isn't in the sections list (shouldn't
+      // happen, but be defensive) falls back to the unclassified bucket.
+      (target ?? ensureUnclassified()).media.push(mediaItem);
+    }
+
+    if (unclassified) {
+      sections.push(unclassified);
+    }
+
     const res = {
       event_id: rows[0].event_id,
       event_name: rows[0].event_name,
       event_slug: rows[0].event_slug,
       event_date: rows[0].event_date,
-      sections: rows.reduce((acc: any[], row: any) => {
-        const { section_id, section_name, start_date, finish_date, media_id, user_id, content, likes, liked, date, type, blurhash, username } = row;
-        // If there's no section for this row (outer join resulted in null), skip
-        if (section_id == null) return acc;
-
-        let section = acc.find(s => s.section_id === section_id);
-        if (!section) {
-          section = {
-            section_id,
-            section_name,
-            start_date,
-            finish_date,
-            media: []
-          };
-          acc.push(section);
-        }
-
-        // Only add media when media exists (media_id may be null from LEFT JOIN)
-        if (media_id != null) {
-          section.media.push({ media_id, user_id, content, likes, liked, date, type, blurhash, username });
-        }
-
-        return acc;
-      }, [])
-    }
+      sections,
+    };
 
     return new Response(JSON.stringify(res), {
       status: 200,
