@@ -438,30 +438,11 @@ export async function POST(
                         return; // no row
                     }
 
-                    // 6. Resolve the default 'Sin clasificar' section (same query
-                    //    confirm uses). No EXIF here, so use the default section.
-                    let sectionId: number;
-                    try {
-                        const fallback = await pool.query(
-                            `SELECT section_id FROM sections WHERE event_id = $1 AND section_name = 'Sin clasificar' LIMIT 1`,
-                            [parsed.eventId],
-                        );
-                        if (fallback.rows.length === 0) {
-                            console.error(
-                                'onUploadCompleted: default section not found for event',
-                                parsed.eventId,
-                            );
-                            return; // no row (cannot insert with an invalid section)
-                        }
-                        sectionId = fallback.rows[0].section_id;
-                    } catch (dbErr) {
-                        // Transient DB error resolving the section — allow retry.
-                        console.error(
-                            'onUploadCompleted: error finding section (will allow retry)',
-                            dbErr,
-                        );
-                        throw dbErr;
-                    }
+                    // 6. No EXIF/creation time is available on this
+                    //    reconciliation path, so the media stays unclassified
+                    //    (section_id NULL) and surfaces under the hardcoded
+                    //    "Sin clasificar" fallback section (see lib/sections.ts).
+                    const sectionId: number | null = null;
 
                     // 7. IDEMPOTENT INSERT — mirrors confirm's INSERT exactly
                     //    (same columns + ON CONFLICT (upload_id) DO NOTHING). If

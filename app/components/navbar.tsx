@@ -13,6 +13,7 @@ import { FiDownload, FiTrash2 } from "react-icons/fi";
 import { HiOutlineArrowsExpand } from "react-icons/hi";
 import { useRef, useState } from "react";
 import { useParams } from "next/navigation";
+import { isUnclassifiedSectionId } from "@/lib/sections";
 
 export default function Navbar() {
 
@@ -31,7 +32,9 @@ export default function Navbar() {
     const [fileError, setFileError] = useState<string | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showMovePanel, setShowMovePanel] = useState(false);
-    const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+    // A section id can be a real numeric DB id or the "unclassified" string
+    // sentinel for the hardcoded fallback section, so keep both here.
+    const [selectedSectionId, setSelectedSectionId] = useState<string | number | null>(null);
 
     // Calcular IDs visibles según el filtro actual
     const visibleMediaIds = event?.sections
@@ -121,13 +124,17 @@ export default function Navbar() {
                 return;
             }
 
-            // Actualizar el event store: mover media a la nueva sección
+            // Actualizar el event store: mover media a la nueva sección. Mover a
+            // la sección hardcodeada "Sin clasificar" significa section_id = null.
             if (event) {
                 const movedSet = new Set(mediaIds);
+                const targetSectionId = isUnclassifiedSectionId(selectedSectionId)
+                    ? null
+                    : Number(selectedSectionId);
                 const movedMedia = event.sections
                     .flatMap((s) => s.media)
                     .filter((m) => movedSet.has(m.media_id))
-                    .map((m) => ({ ...m, section_id: Number(selectedSectionId) }));
+                    .map((m) => ({ ...m, section_id: targetSectionId }));
 
                 const updatedSections = event.sections.map((section) => {
                     // Quitar las movidas de su sección original

@@ -136,13 +136,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const eventId = eventResult.rows[0].event_id;
 
-    // Determine section based on photo time
-    let sectionId: number;
+    // Determine section based on photo time-of-day. When no section matches
+    // (or there is no reliable creation time), leave section_id NULL so the
+    // media surfaces under the hardcoded "Sin clasificar" fallback section.
+    let sectionId: number | null = null;
     try {
         if (photoTime) {
             const sectionResult = await pool.query(
                 `SELECT section_id FROM sections
-                 WHERE event_id = $1 AND section_name <> 'Sin clasificar'
+                 WHERE event_id = $1
                  AND start_date::time <= $2::time AND finish_date::time >= $2::time
                  LIMIT 1`,
                 [eventId, photoTime]
@@ -150,21 +152,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
             if (sectionResult.rows.length > 0) {
                 sectionId = sectionResult.rows[0].section_id;
-            } else {
-                const fallback = await pool.query(
-                    `SELECT section_id FROM sections WHERE event_id = $1 AND section_name = 'Sin clasificar' LIMIT 1`,
-                    [eventId]
-                );
-                if (fallback.rows.length === 0) return new Response("Default section not found", { status: 500 });
-                sectionId = fallback.rows[0].section_id;
             }
-        } else {
-            const fallback = await pool.query(
-                `SELECT section_id FROM sections WHERE event_id = $1 AND section_name = 'Sin clasificar' LIMIT 1`,
-                [eventId]
-            );
-            if (fallback.rows.length === 0) return new Response("Default section not found", { status: 500 });
-            sectionId = fallback.rows[0].section_id;
         }
     } catch (error) {
         console.error("Error finding section:", error);

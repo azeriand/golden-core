@@ -53,6 +53,17 @@ export async function DELETE(_: any, { params }: { params: Promise<{ "event-slug
   if (isDemoEvent(eventSlug)) return demoGuardResponse();
 
   try {
+    // Detach any media in this section first so the delete does not violate the
+    // media -> sections FK. Detached media (section_id = NULL) falls back to the
+    // hardcoded "Sin clasificar" section instead of being lost.
+    await pool.query(
+      `UPDATE media m
+       SET section_id = NULL
+       FROM events e
+       WHERE e.event_id = m.event_id AND e.event_slug = $1 AND m.section_id = $2`,
+      [eventSlug, sectionId]
+    );
+
     const result = await pool.query(
       `DELETE FROM sections s
        USING events e
