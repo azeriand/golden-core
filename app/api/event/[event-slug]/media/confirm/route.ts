@@ -35,7 +35,6 @@ import { head, del, BlobNotFoundError } from '@vercel/blob';
 import pool from '@/lib/db';
 import { verifyRequest } from '@/lib/auth';
 import { isDemoEvent, isDemoUser, demoGuardResponse } from '@/lib/demo-guard';
-import { resolveSectionIdByTime, isValidTimeOfDay } from '@/lib/section-match';
 
 export const runtime = 'nodejs';
 
@@ -84,9 +83,6 @@ interface ConfirmUploadBody {
     processedSize: number;
     date: string;
     blurhash?: string | null;
-    // Auto-categorization creation time-of-day ("HH:MM") or null. Matched to a
-    // section server-side; null (or no match) => unclassified ("Sin clasificar").
-    creationTime?: string | null;
 }
 
 type ParsedBody = ConfirmUploadBody | { error: string };
@@ -116,7 +112,6 @@ function parseConfirmBody(raw: unknown): ParsedBody {
         processedSize,
         date,
         blurhash,
-        creationTime,
     } = p;
 
     // uploadId must be a valid UUID — always 400 on failure (Req 7.4).
@@ -155,15 +150,6 @@ function parseConfirmBody(raw: unknown): ParsedBody {
     if (blurhash !== undefined && blurhash !== null && typeof blurhash !== 'string') {
         return { error: 'Invalid confirm request' };
     }
-    // creationTime is optional; if present must be a valid "HH:MM"/"HH:MM:SS"
-    // time-of-day string or null. A malformed non-null value is a bad request.
-    if (
-        creationTime !== undefined &&
-        creationTime !== null &&
-        !isValidTimeOfDay(creationTime)
-    ) {
-        return { error: 'Invalid confirm request' };
-    }
 
     return {
         uploadId,
@@ -174,7 +160,6 @@ function parseConfirmBody(raw: unknown): ParsedBody {
         processedSize,
         date,
         blurhash: typeof blurhash === 'string' ? blurhash : null,
-        creationTime: isValidTimeOfDay(creationTime) ? creationTime.trim() : null,
     };
 }
 
@@ -332,23 +317,18 @@ export async function POST(
         return new Response('Could not verify upload', { status: 500 });
     }
 
-    // 7. Resolve section by the client-extracted creation time-of-day (Req 9).
-    //    The browser reads the EXIF/container creation time and sends it in the
-    //    confirm body (never the calendar date). When there is no time or no
-    //    section matches, section_id stays NULL and the media surfaces under the
-    //    hardcoded "Sin clasificar" fallback section (see lib/sections.ts) and
-    //    can be moved into a real section from the UI.
+    // 7. Resolve section (Req 9). The confirm route receives no raw file buffer,
+    //    so no EXIF photo-time is available here (unlike the legacy route);
+    //    the media stays unclassified (section_id NULL).
     //    `type` reuses the client-resolved MIME (already validated against the
     //    same allowed image/video set as the legacy route). blurhash: persist
     //    the optional client-provided value as-is per design (Req 10) — no second
     //    server-side BlurHash implementation is introduced here.
-    let sectionId: number | null = null;
-    try {
-        sectionId = await resolveSectionIdByTime(pool, eventId, body.creationTime);
-    } catch (error) {
-        console.error('confirm: error finding section', error);
-        return new Response('Error finding section', { status: 500 });
-    }
+    // No raw file buffer is available here, so no EXIF/creation time can be
+    // extracted. Leave section_id NULL; the media surfaces under the hardcoded
+    // "Sin clasificar" fallback section (see lib/sections.ts) and can be moved
+    // into a real section from the UI.
+    const sectionId: number | null = null;
 
     // 8 + 9. Idempotent insert keyed by upload_id (Req 7.5, 13.4, 22) with
     // Blob-succeeds/DB-fails cleanup (Req 8, 20, 21).
