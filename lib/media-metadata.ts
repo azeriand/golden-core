@@ -3,11 +3,9 @@ import exifr from "exifr";
 /**
  * Formats a Date's time-of-day as an "HH:MM" string using UTC getters.
  *
- * EXIF dates parsed by exifr are returned as JS Date objects whose UTC fields
- * hold the original wall-clock components (exifr does not shift them by the
- * server timezone). Reading them back with the UTC getters gives the original
- * clock time regardless of where the server runs. The video parser below also
- * builds its Date from UTC components, so the same formatter applies.
+ * The video parser builds its Date from UTC components holding the local
+ * wall-clock time, so reading them back with the UTC getters yields the
+ * original clock time regardless of where the server runs.
  */
 function formatTimeOfDay(date: Date): string {
     const hours = String(date.getUTCHours()).padStart(2, "0");
@@ -16,40 +14,40 @@ function formatTimeOfDay(date: Date): string {
 }
 
 /**
- * Applies a "+HH:MM" / "-HH:MM" EXIF offset to a Date, returning a new Date
- * whose UTC clock fields represent the local wall-clock time.
- */
-function applyOffset(date: Date, offset: string): Date {
-    const match = /^([+-])(\d{2}):(\d{2})$/.exec(offset.trim());
-    if (!match) {
-        return date;
-    }
-    const sign = match[1] === "-" ? -1 : 1;
-    const offsetMinutes = sign * (Number(match[2]) * 60 + Number(match[3]));
-    return new Date(date.getTime() + offsetMinutes * 60 * 1000);
-}
-
-/**
- * Extracts the local creation time-of-day from an image's EXIF metadata.
+ * Extracts the local creation time-of-day ("HH:MM") from an image's EXIF
+ * metadata.
  *
- * Prefers DateTimeOriginal (the capture moment), falling back to CreateDate
- * and ModifyDate. When an EXIF offset is present the time is shifted to the
- * original local wall-clock time.
+ * The EXIF DateTimeOriginal tag already stores the *local* wall-clock time of
+ * capture as plain components (e.g. "2026:09:03 20:39:40"). We read those raw
+ * string values (reviveValues: false) instead of letting exifr revive them into
+ * a JS Date: exifr interprets the string using the server's timezone, so the
+ * resulting Date's clock fields shift with wherever the server runs. Parsing
+ * the raw components directly keeps the time-of-day stable across timezones and
+ * means no EXIF offset must be applied — the offset only names the zone, the
+ * time is already local.
+ *
+ * Prefers DateTimeOriginal (the capture moment), falling back to CreateDate and
+ * ModifyDate.
  */
-async function extractImageTime(arrayBuffer: ArrayBuffer): Promise<Date | null> {
-    const metadata = await exifr.parse(arrayBuffer, { translateValues: true });
+async function extractImageTime(arrayBuffer: ArrayBuffer): Promise<string | null> {
+    const metadata = await exifr.parse(arrayBuffer, { reviveValues: false });
     if (!metadata) {
         return null;
     }
 
     const candidates = [metadata.DateTimeOriginal, metadata.CreateDate, metadata.ModifyDate];
-    const capture = candidates.find((c) => c instanceof Date && !isNaN(c.getTime())) as Date | undefined;
-    if (!capture) {
+    const raw = candidates.find((c) => typeof c === "string" && c.trim().length > 0) as string | undefined;
+    if (!raw) {
         return null;
     }
 
-    const offset = metadata.OffsetTimeOriginal ?? metadata.OffsetTime;
-    return typeof offset === "string" ? applyOffset(capture, offset) : capture;
+    // EXIF datetime format: "YYYY:MM:DD HH:MM:SS" (optionally with sub-seconds).
+    const match = /^\d{4}:\d{2}:\d{2}\s+(\d{2}):(\d{2})/.exec(raw.trim());
+    if (!match) {
+        return null;
+    }
+
+    return `${match[1]}:${match[2]}`;
 }
 
 // Seconds between 1904-01-01 (QuickTime/MP4 epoch) and 1970-01-01 (Unix epoch).
@@ -210,6 +208,24 @@ function extractVideoTime(arrayBuffer: ArrayBuffer): Date | null {
     );
 }
 
+const VIDEO_EXTENSIONS = new Set(["mov", "mp4", "webm", "3gp", "3gpp", "avi", "mkv", "m4v"]);
+
+/**
+ * Decides whether a file should be parsed as a video.
+ *
+ * Prefers the MIME type but falls back to the filename extension: browsers
+ * often deliver an empty `file.type` for HEIC and some video containers, and
+ * without the extension fallback those files would silently skip metadata
+ * extraction and land in the default section.
+ */
+function isVideoFile(file: File): boolean {
+    if (file.type) {
+        return file.type.startsWith("video/");
+    }
+    const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+    return VIDEO_EXTENSIONS.has(extension);
+}
+
 /**
  * Extracts the creation time-of-day ("HH:MM") from a media file's metadata.
  *
@@ -224,14 +240,11 @@ export async function extractCreationTime(file: File): Promise<string | null> {
     try {
         const arrayBuffer = await file.arrayBuffer();
 
-        let creationDate: Date | null = null;
-        if (file.type.startsWith("video/")) {
-            creationDate = extractVideoTime(arrayBuffer);
-        } else if (file.type.startsWith("image/")) {
-            creationDate = await extractImageTime(arrayBuffer);
+        if (isVideoFile(file)) {
+            const creationDate = extractVideoTime(arrayBuffer);
+            return creationDate ? formatTimeOfDay(creationDate) : null;
         }
-
-        return creationDate ? formatTimeOfDay(creationDate) : null;
+        return await extractImageTime(arrayBuffer);
     } catch (error) {
         console.error("Error extracting media creation time:", error);
         return null;
