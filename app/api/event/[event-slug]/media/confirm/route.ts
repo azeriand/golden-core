@@ -404,8 +404,32 @@ export async function POST(
         }
 
         if (existing.rows.length === 1) {
-            // Idempotent repeat: return the existing row (Req 7.6/22).
-            return Response.json(await shapeMediaRow(existing.rows[0], user.userId), { status: 200 });
+            // Idempotent repeat: a row already exists for this uploadId (e.g. the
+            // production onUploadCompleted webhook inserted it first).
+            //
+            // CLASSIFICATION RECONCILIATION: the webhook derives its section from
+            // the creation time carried in the signed tokenPayload, which can be
+            // absent/stale, so it may have created the row UNCLASSIFIED
+            // (section_id NULL). This confirm request carries the authoritative,
+            // file-derived creation time. If we computed a real section here but
+            // the existing row is still unclassified, adopt our section so the
+            // media does not silently fall back to "Sin clasificar" on refresh.
+            // Guarded to `section_id IS NULL` so we NEVER override a section a
+            // user may have since moved the media into. Idempotent: no-op when
+            // the row is already classified or we have no section to set.
+            let existingRow = existing.rows[0];
+            if (sectionId != null && existingRow.section_id == null) {
+                const updated = await pool.query(
+                    `UPDATE media SET section_id = $1
+                     WHERE upload_id = $2 AND section_id IS NULL
+                     RETURNING *`,
+                    [sectionId, body.uploadId],
+                );
+                if (updated.rows.length === 1) {
+                    existingRow = updated.rows[0];
+                }
+            }
+            return Response.json(await shapeMediaRow(existingRow, user.userId), { status: 200 });
         }
 
         // Extremely unlikely: conflict reported but no row found on re-select
