@@ -39,7 +39,11 @@ export default function MediaItem({index, src, type, likes, liked, mediaID, sect
 
     return(
         <article key={index} className='w-full h-auto relative overflow-hidden'>
-            
+
+            {selected && (
+                <div className="absolute inset-0 z-5 bg-white/30 pointer-events-none transition-opacity duration-200" />
+            )}
+
             { isSelectionMode && (
                 <div className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white flex items-center justify-center cursor-pointer" onClick={() => toggleSelected(mediaID)}>
                     {selected ? <MdOutlineCheckCircleOutline size={20}/> : <MdOutlineRadioButtonUnchecked size={20}/>}
@@ -53,7 +57,6 @@ export default function MediaItem({index, src, type, likes, liked, mediaID, sect
                         playsInline
                         preload="metadata"
                         className="w-full h-auto pointer-events-none transition-all duration-200"
-                        style={{ filter: selected ? 'brightness(1.2)' : 'none', opacity: selected ? 0.7 : 1 }}
                     />
                     <div className="absolute inset-0 flex items-center justify-center">
                         <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center">
