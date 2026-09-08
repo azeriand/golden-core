@@ -9,7 +9,7 @@ import { AiFillHome } from "react-icons/ai";
 import { TbPhotoPlus } from "react-icons/tb";
 import { PiFolderUserBold } from "react-icons/pi";
 import { FiDownload, FiTrash2 } from "react-icons/fi";
-import { HiOutlineArrowsExpand } from "react-icons/hi";
+import { LuMoveVertical } from "react-icons/lu";
 import { useRef, useState } from "react";
 import { useParams } from "next/navigation";
 
@@ -235,7 +235,7 @@ export default function Navbar() {
                         {canMoveAndDelete && (
                             <>
                                 <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white! md:text-purple-700! md:border-purple-200! md:bg-purple-50!" style={{ width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleMove}>
-                                    <HiOutlineArrowsExpand size={18} />
+                                    <LuMoveVertical size={18} />
                                 </Button>
                                 <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white! md:text-purple-700! md:border-purple-200! md:bg-purple-50!" style={{ width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleDelete}>
                                     <FiTrash2 size={18} />
