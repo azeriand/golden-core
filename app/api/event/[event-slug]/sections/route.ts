@@ -2,10 +2,12 @@
 import pool from '@/lib/db';
 import { SectionRequest } from '@/app/dto/section';
 import { NextRequest } from 'next/server';
+import { isDemoEvent, demoGuardResponse } from '@/lib/demo-guard';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ "event-slug": string }> }) {
-  const { sections }: { sections: SectionRequest[] } = await request.json();
   const { "event-slug": eventSlug } = await params;
+  if (isDemoEvent(eventSlug)) return demoGuardResponse();
+  const { sections }: { sections: SectionRequest[] } = await request.json();
 
   //iterar sections para meter for cada una en la base de datos
   if (!sections || sections.length === 0) {

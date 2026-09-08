@@ -2,12 +2,15 @@
 
 import pool from '@/lib/db';
 import { NextRequest } from 'next/server';
+import { isDemoEvent, demoGuardResponse } from '@/lib/demo-guard';
+import { isUnclassifiedSectionId } from '@/lib/sections';
 
 export async function PATCH(
     request: NextRequest,
     { params }: { params: Promise<{ "event-slug": string; "media-id": string }> }
 ) {
     const { "event-slug": eventSlug, "media-id": mediaId } = await params;
+    if (isDemoEvent(eventSlug)) return demoGuardResponse();
 
     const { section_id } = await request.json();
 
@@ -16,6 +19,10 @@ export async function PATCH(
             status: 400,
         });
     }
+
+    // Moving into the hardcoded "Sin clasificar" fallback clears the section
+    // (section_id = NULL) rather than pointing at a real section row.
+    const targetSectionId: number | null = isUnclassifiedSectionId(section_id) ? null : section_id;
 
     const result = await pool.query(
         `
@@ -29,7 +36,7 @@ export async function PATCH(
             )
         RETURNING *
         `,
-        [section_id, mediaId, eventSlug]
+        [targetSectionId, mediaId, eventSlug]
     );
 
     if (result.rows.length === 0) {

@@ -5,6 +5,7 @@ import useUploadStore from "../src/stores/upload.store";
 import useMediaUiStore from "../src/stores/media-ui.store";
 import useEventStore from "../src/stores/event.store";
 import useAuthStore from "../src/stores/auth.store";
+import useErrorStore from "../src/stores/error.store";
 import { AiFillHome } from "react-icons/ai";
 import { TbPhotoPlus } from "react-icons/tb";
 import { PiFolderUserBold } from "react-icons/pi";
@@ -12,6 +13,7 @@ import { FiDownload, FiTrash2 } from "react-icons/fi";
 import { LuMoveVertical } from "react-icons/lu";
 import { useRef, useState } from "react";
 import { useParams } from "next/navigation";
+import { isUnclassifiedSectionId } from "@/lib/sections";
 
 export default function Navbar() {
 
@@ -20,14 +22,19 @@ export default function Navbar() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const { state, changeState } = useGlobalStore();
-    const { enqueueFiles } = useUploadStore();
+    // Narrow to a stable function-ref selector so navbar no longer re-renders on
+    // every upload store change (e.g. progress ticks). The action reference is
+    // stable across updates.
+    const enqueueFiles = useUploadStore((s) => s.enqueueFiles);
     const { isSelectionMode, selectedIds, downloading, downloadSelected, toggleSelectedMode, selectAll, deselectAll, downloadProgress } = useMediaUiStore();
-    const { event } = useEventStore();
+    const { event, isDemo } = useEventStore();
     const { user } = useAuthStore();
     const [fileError, setFileError] = useState<string | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showMovePanel, setShowMovePanel] = useState(false);
-    const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+    // A section id can be a real numeric DB id or the "unclassified" string
+    // sentinel for the hardcoded fallback section, so keep both here.
+    const [selectedSectionId, setSelectedSectionId] = useState<string | number | null>(null);
 
     // Calcular IDs visibles según el filtro actual
     const visibleMediaIds = event?.sections
@@ -50,8 +57,8 @@ export default function Navbar() {
         }
     };
 
-    // Solo puede mover/borrar si es admin o está en "Mis Fotos"
-    const canMoveAndDelete = user?.isAdmin || state === 'myPhotos';
+    // Solo puede mover/borrar si es admin o está en "Mis Fotos", y no es demo
+    const canMoveAndDelete = !isDemo && (user?.isAdmin || state === 'myPhotos');
 
     const handleDelete = () => {
         if (selectedIds.size === 0) return;
@@ -70,6 +77,7 @@ export default function Navbar() {
             if (!response.ok) {
                 const text = await response.text();
                 console.error("Error al eliminar:", text);
+                useErrorStore.getState().showError("No se pudieron eliminar los archivos.");
                 return;
             }
 
@@ -87,6 +95,7 @@ export default function Navbar() {
             toggleSelectedMode();
         } catch (error) {
             console.error("Error al eliminar:", error);
+            useErrorStore.getState().showError("No se pudieron eliminar los archivos.");
         } finally {
             setShowDeleteConfirm(false);
         }
@@ -111,16 +120,21 @@ export default function Navbar() {
             if (!response.ok) {
                 const text = await response.text();
                 console.error("Error al mover:", text);
+                useErrorStore.getState().showError("No se pudieron mover los archivos.");
                 return;
             }
 
-            // Actualizar el event store: mover media a la nueva sección
+            // Actualizar el event store: mover media a la nueva sección. Mover a
+            // la sección hardcodeada "Sin clasificar" significa section_id = null.
             if (event) {
                 const movedSet = new Set(mediaIds);
+                const targetSectionId = isUnclassifiedSectionId(selectedSectionId)
+                    ? null
+                    : Number(selectedSectionId);
                 const movedMedia = event.sections
                     .flatMap((s) => s.media)
                     .filter((m) => movedSet.has(m.media_id))
-                    .map((m) => ({ ...m, section_id: Number(selectedSectionId) }));
+                    .map((m) => ({ ...m, section_id: targetSectionId }));
 
                 const updatedSections = event.sections.map((section) => {
                     // Quitar las movidas de su sección original
@@ -138,6 +152,7 @@ export default function Navbar() {
             toggleSelectedMode();
         } catch (error) {
             console.error("Error al mover:", error);
+            useErrorStore.getState().showError("No se pudieron mover los archivos.");
         } finally {
             setShowMovePanel(false);
             setSelectedSectionId(null);
@@ -285,21 +300,25 @@ export default function Navbar() {
                         </Button>
                     </Card>
 
-                    <Button appearance='mate' color="purple" intensity={700} size='md' className="!rounded-full bg-purple-700/90! backdrop-blur-md! border-purple-500! text-white! md:text-[#9D7BD6]! md:border-purple-500! md:bg-purple-200!" style={{ width: '48px', height: '48px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} icon={<TbPhotoPlus size={24}/>} onClick={() => fileInputRef.current?.click()}></Button>
-                    <input ref={fileInputRef} type="file" accept="image/*,video/*,.heic,.heif,.mov,.mp4" multiple className="hidden" onChange={(e) => {
-                        const files = Array.from(e.target.files || []);
-                        if (files.length === 0) return;
+                    {!isDemo && (
+                        <>
+                            <Button appearance='mate' color="purple" intensity={700} size='md' className="!rounded-full bg-purple-700/90! backdrop-blur-md! border-purple-500! text-white! md:text-[#9D7BD6]! md:border-purple-500! md:bg-purple-200!" style={{ width: '48px', height: '48px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} icon={<TbPhotoPlus size={24}/>} onClick={() => fileInputRef.current?.click()}></Button>
+                            <input ref={fileInputRef} type="file" accept="image/*,video/*,.heic,.heif,.mov,.mp4" multiple className="hidden" onChange={(e) => {
+                                const files = Array.from(e.target.files || []);
+                                if (files.length === 0) return;
 
-                        if (files.length > 20) {
-                            setFileError("Puedes seleccionar hasta 20 archivos a la vez.");
-                            e.target.value = "";
-                            return;
-                        }
+                                if (files.length > 20) {
+                                    setFileError("Puedes seleccionar hasta 20 archivos a la vez.");
+                                    e.target.value = "";
+                                    return;
+                                }
 
-                        setFileError(null);
-                        enqueueFiles(files, eventSlug);
-                        e.target.value = "";
-                    }}/>
+                                setFileError(null);
+                                enqueueFiles(files, eventSlug);
+                                e.target.value = "";
+                            }}/>
+                        </>
+                    )}
 
                     {fileError && <p className="absolute -top-10 left-0 right-0 text-center text-red-500 text-sm bg-white/95 rounded-lg py-1 px-2">{fileError}</p>}
                 </div>

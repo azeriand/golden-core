@@ -1,13 +1,12 @@
 "use client"
 import { Button } from "azeriand-library"
-import { FaShare } from "react-icons/fa"
-import { IoSettingsSharp } from "react-icons/io5";
-import { TbLogout } from "react-icons/tb";
 import { IoCloseOutline } from "react-icons/io5";
 import { MdOutlineRadioButtonUnchecked, MdOutlineCheckCircleOutline } from "react-icons/md";
+import { FiLogOut } from "react-icons/fi";
+import { FaShare } from "react-icons/fa";
 import { Great_Vibes } from 'next/font/google'
-import useAuthStore from "../src/stores/auth.store";
 import useMediaUiStore from "../src/stores/media-ui.store";
+import useAuthStore from "../src/stores/auth.store";
 import useEventStore from "../src/stores/event.store";
 import { useEffect, useRef, useState } from "react";
 
@@ -18,9 +17,9 @@ const greatVibes = Great_Vibes({
 
 export default function HomeTopLayout({ event_name, event_date, visibleMediaIds }: { event_name: string, event_date: string, visibleMediaIds: number[] }) {
 
-    const { logout } = useAuthStore();
     const { downloadSelected, downloading, selectedIds, isSelectionMode, toggleSelectedMode, selectAll, deselectAll } = useMediaUiStore();
-    const { shareEvent } = useEventStore()
+    const logout = useAuthStore((s) => s.logout);
+    const { shareEvent } = useEventStore();
     const [isStuck, setIsStuck] = useState(false);
     const imgRef = useRef<HTMLImageElement>(null);
 
@@ -62,11 +61,8 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds 
                 className="w-full h-auto rounded-t-2xl"
             />
 
-            {/* Spacer para compensar la barra fixed */}
-            {isStuck && <div className="h-14" />}
-
-            {/* Barra expandida: en flujo debajo de la imagen */}
-            <div className={`bg-[#FFFCF8]/95 backdrop-blur-md w-full px-6 py-3 ${isStuck ? 'hidden' : ''}`}>
+            {/* Container estático con título, fecha y botón de seleccionar */}
+            <div className="bg-[#FFFCF8]/95 backdrop-blur-md w-full px-6 py-3">
                 <div className="flex flex-col items-center gap-y-1">
                     <h1 className={`text-2xl font-semibold ${greatVibes.className} text-purple-700`}>{event_name}</h1>
                     <p className={`text-2xl font-bold ${greatVibes.className} text-purple-500`}>{event_date}</p>
@@ -76,9 +72,14 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds 
                             <FaShare size={16} />
                         </Button>
                         {!isSelectionMode && (
-                            <Button appearance='mate' color="purple" intensity={200} size='sm' className="py-2! text-xs! rounded-xl! border-purple-200!" style={{ color: '#9D7BD6' }} onClick={toggleSelectedMode}>
-                                Seleccionar
-                            </Button>
+                            <>
+                                <Button appearance='mate' color="purple" intensity={200} size='sm' className="py-2! text-xs! rounded-xl! border-purple-200!" style={{ color: '#9D7BD6' }} onClick={toggleSelectedMode}>
+                                    Seleccionar
+                                </Button>
+                                <Button appearance='mate' color="purple" intensity={200} size='sm' className="!rounded-full border-purple-200!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9D7BD6' }} onClick={() => logout()}>
+                                    <FiLogOut size={16} />
+                                </Button>
+                            </>
                         )}
                         {isSelectionMode && (
                             <>

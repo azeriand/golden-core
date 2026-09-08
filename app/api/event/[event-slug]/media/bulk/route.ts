@@ -4,6 +4,8 @@ import pool from '@/lib/db';
 import { NextRequest } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { del } from '@vercel/blob';
+import { isDemoEvent, demoGuardResponse } from '@/lib/demo-guard';
+import { isUnclassifiedSectionId } from '@/lib/sections';
 
 /**
  * DELETE /api/event/[event-slug]/media/bulk
@@ -16,6 +18,7 @@ export async function DELETE(
     { params }: { params: Promise<{ "event-slug": string }> }
 ) {
     const { "event-slug": eventSlug } = await params;
+    if (isDemoEvent(eventSlug)) return demoGuardResponse();
 
     const token = request.cookies.get("auth_token")?.value;
 
@@ -126,6 +129,7 @@ export async function PATCH(
     { params }: { params: Promise<{ "event-slug": string }> }
 ) {
     const { "event-slug": eventSlug } = await params;
+    if (isDemoEvent(eventSlug)) return demoGuardResponse();
 
     const token = request.cookies.get("auth_token")?.value;
 
@@ -161,6 +165,10 @@ export async function PATCH(
         return new Response("Section ID missing", { status: 400 });
     }
 
+    // Moving into the hardcoded "Sin clasificar" fallback means clearing the
+    // section (section_id = NULL) rather than pointing at a real section row.
+    const toUnclassified = isUnclassifiedSectionId(sectionId);
+
     // Get the event_id
     const eventResult = await pool.query(
         `SELECT event_id FROM events WHERE event_slug = $1`,
@@ -173,15 +181,21 @@ export async function PATCH(
 
     const eventId = eventResult.rows[0].event_id;
 
-    // Verify the target section belongs to this event
-    const sectionResult = await pool.query(
-        `SELECT section_id FROM sections WHERE section_id = $1 AND event_id = $2`,
-        [sectionId, eventId]
-    );
+    // Verify a real target section belongs to this event (skipped when moving
+    // to the synthetic "Sin clasificar" section, which has no DB row).
+    if (!toUnclassified) {
+        const sectionResult = await pool.query(
+            `SELECT section_id FROM sections WHERE section_id = $1 AND event_id = $2`,
+            [sectionId, eventId]
+        );
 
-    if (sectionResult.rows.length === 0) {
-        return new Response("Section not found in this event", { status: 404 });
+        if (sectionResult.rows.length === 0) {
+            return new Response("Section not found in this event", { status: 404 });
+        }
     }
+
+    // Target value written to media.section_id: NULL for unclassified, else the id.
+    const targetSectionId: number | null = toUnclassified ? null : sectionId;
 
     // Update media, applying permission filter
     let updateQuery: string;
@@ -196,7 +210,7 @@ export async function PATCH(
             AND event_id = $3
             RETURNING media_id
         `;
-        updateParams = [sectionId, mediaIds, eventId];
+        updateParams = [targetSectionId, mediaIds, eventId];
     } else {
         // User can only move their own media
         updateQuery = `
@@ -207,7 +221,7 @@ export async function PATCH(
             AND user_id = $4
             RETURNING media_id
         `;
-        updateParams = [sectionId, mediaIds, eventId, userId];
+        updateParams = [targetSectionId, mediaIds, eventId, userId];
     }
 
     const updateResult = await pool.query(updateQuery, updateParams);

@@ -1,0 +1,308 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Verify live `media` columns and `next.config` image remote patterns": [
+      {
+        "executionId": "f15f3e22-4fc7-4d13-9ea8-2cb02da7706c",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787838301445
+      },
+      {
+        "executionId": "f15f3e22-4fc7-4d13-9ea8-2cb02da7706c",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787838516638
+      }
+    ],
+    "1.2 Extract JWT verification into `lib/auth.ts` (`verifyRequest`) without widening permissions": [
+      {
+        "executionId": "5234a0ab-fb15-402d-9aec-013a405d61be",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787838703394
+      },
+      {
+        "executionId": "5234a0ab-fb15-402d-9aec-013a405d61be",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787838962229
+      }
+    ],
+    "1.3 Write the additive, reversible `upload_id` migration (only after 1.1 confirms live columns)": [
+      {
+        "executionId": "50031b5c-40ba-402b-b1cf-e5c22593f3bd",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787839233722
+      },
+      {
+        "executionId": "50031b5c-40ba-402b-b1cf-e5c22593f3bd",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787839475824
+      }
+    ],
+    "1. Phase 2 - Verify environment, extract auth, and prepare (reversible) migration": [
+      {
+        "executionId": "50031b5c-40ba-402b-b1cf-e5c22593f3bd",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787839475868
+      }
+    ],
+    "3.1 Implement `POST /api/event/[event-slug]/media/upload-token` with `handleUpload`, auth, and demo guard": [
+      {
+        "executionId": "a721a901-920e-44a6-86ff-a0ce8d4b630b",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787841167001
+      },
+      {
+        "executionId": "a721a901-920e-44a6-86ff-a0ce8d4b630b",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787841615877
+      }
+    ],
+    "3. Phase 3 - `upload-token` handshake route (`handleUpload`)": [
+      {
+        "executionId": "a721a901-920e-44a6-86ff-a0ce8d4b630b",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787841615925
+      }
+    ],
+    "5.1 Implement `POST /api/event/[event-slug]/media/confirm` with idempotent insert": [
+      {
+        "executionId": "b4c93b10-a630-47e7-9a76-a316f006f5f1",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787841757938
+      },
+      {
+        "executionId": "b4c93b10-a630-47e7-9a76-a316f006f5f1",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787842041578
+      }
+    ],
+    "7.1 Implement `lib/image-preprocess.ts` (Canvas-based compression)": [
+      {
+        "executionId": "a4963ebc-ad92-401e-8c03-b47777d8bc63",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787842368299
+      },
+      {
+        "executionId": "a4963ebc-ad92-401e-8c03-b47777d8bc63",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787842758642
+      }
+    ],
+    "7.2 Implement `blob-upload-client.ts` wrapper over `@vercel/blob/client` `upload()`": [
+      {
+        "executionId": "9cd6bc39-c224-4d9d-9dbf-81089da421e0",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787843049505
+      },
+      {
+        "executionId": "d95b694b-c9d3-4379-ba3e-aea09eb586ba",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787844693479
+      }
+    ],
+    "7. Phase 5 - Client image preprocessing and Blob upload wrapper": [
+      {
+        "executionId": "d95b694b-c9d3-4379-ba3e-aea09eb586ba",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787844693530
+      }
+    ],
+    "9.1 Implement `lib/upload-queue.ts` (IndexedDB persistence)": [
+      {
+        "executionId": "d95b694b-c9d3-4379-ba3e-aea09eb586ba",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787844698131
+      },
+      {
+        "executionId": "d95b694b-c9d3-4379-ba3e-aea09eb586ba",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787845008476
+      }
+    ],
+    "9.2 Refactor `upload.store.ts` to orchestrate preprocess → handshake → upload → confirm": [
+      {
+        "executionId": "4d9d22f2-87d5-4298-8316-3ba40aca45c7",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787845223727
+      },
+      {
+        "executionId": "4d9d22f2-87d5-4298-8316-3ba40aca45c7",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787845632967
+      }
+    ],
+    "9.3 Implement retry and cancel in `upload.store.ts`": [
+      {
+        "executionId": "99fd4754-115f-42b7-adc9-6d1289a704cd",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787845761632
+      },
+      {
+        "executionId": "99fd4754-115f-42b7-adc9-6d1289a704cd",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787846281178
+      }
+    ],
+    "9.4 Implement `recoverInterrupted` with the three distinct recovery behaviors": [
+      {
+        "executionId": "4a05cf14-79ad-46a4-8248-7945d676befb",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787846430882
+      },
+      {
+        "executionId": "4a05cf14-79ad-46a4-8248-7945d676befb",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787847068739
+      }
+    ],
+    "5.3 Implement `onUploadCompleted` reconciliation in the handshake route": [
+      {
+        "executionId": "bec0cb15-c594-4dea-9e62-7457486bc358",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787861733750
+      },
+      {
+        "executionId": "bec0cb15-c594-4dea-9e62-7457486bc358",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787862158781
+      },
+      {
+        "executionId": "bec0cb15-c594-4dea-9e62-7457486bc358",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787862211240
+      },
+      {
+        "executionId": "bec0cb15-c594-4dea-9e62-7457486bc358",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787862767794
+      }
+    ],
+    "5.2 Add orphaned-Blob cleanup and no-false-completed handling on DB failure": [
+      {
+        "executionId": "18ec3ce0-c467-4519-a8e0-f15c0fc63b56",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787863008990
+      }
+    ],
+    "5. Phase 4 - `confirm` route (idempotent insert + orphan cleanup + reconciliation)": [
+      {
+        "executionId": "18ec3ce0-c467-4519-a8e0-f15c0fc63b56",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787863009273
+      }
+    ],
+    "9.5 Ensure minimal re-renders via selector-scoped subscriptions": [
+      {
+        "executionId": "121973a4-555c-45fd-aad4-0744fb29214c",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787863175259
+      },
+      {
+        "executionId": "121973a4-555c-45fd-aad4-0744fb29214c",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787863496129
+      }
+    ],
+    "9. Phase 6 - IndexedDB queue and upload store refactor": [
+      {
+        "executionId": "121973a4-555c-45fd-aad4-0744fb29214c",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787863496274
+      }
+    ],
+    "11.1 Optimize `next/image` usage in `media-item.tsx` and `masonry.tsx`": [
+      {
+        "executionId": "6c40859f-277a-4023-b22a-0dcd960ad2ef",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787863649542
+      },
+      {
+        "executionId": "6c40859f-277a-4023-b22a-0dcd960ad2ef",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787863882206
+      }
+    ],
+    "11.2 Polish BlurHash placeholder rendering (immediate + smooth transition, no regeneration per render)": [
+      {
+        "executionId": "d5acf565-051e-43ef-89ed-d373376d2336",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787864056528
+      },
+      {
+        "executionId": "d5acf565-051e-43ef-89ed-d373376d2336",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787864396045
+      }
+    ],
+    "11. Phase 7 - Media rendering polish": [
+      {
+        "executionId": "d5acf565-051e-43ef-89ed-d373376d2336",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787864396124
+      }
+    ],
+    "13.1 Add `fast-check` to devDependencies and set up the test harness": [
+      {
+        "executionId": "71f1566b-6d01-4cbc-8153-a518bac6ef6a",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787865316215
+      }
+    ],
+    "13.2 Write unit tests for `verifyRequest`, `insertMediaIdempotent`, `preprocessImage`, and `confirm`": [
+      {
+        "executionId": "71f1566b-6d01-4cbc-8153-a518bac6ef6a",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787865322081
+      },
+      {
+        "executionId": "71f1566b-6d01-4cbc-8153-a518bac6ef6a",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787865940837
+      }
+    ],
+    "13.3 Write property test P1 - no duplicate rows across interleavings": [
+      {
+        "executionId": "f4e27e9a-1507-4409-944e-9c5f0e9ceb29",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787866635695
+      }
+    ],
+    "13.4 Write property test P4 - demo immutability across all entry points": [
+      {
+        "executionId": "f4e27e9a-1507-4409-944e-9c5f0e9ceb29",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1787866642241
+      },
+      {
+        "executionId": "f4e27e9a-1507-4409-944e-9c5f0e9ceb29",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1788000281582
+      }
+    ],
+    "13.5 Write property test P6 - preprocess byte-identical for video/non-image": [
+      {
+        "executionId": "c048afeb-9144-47bb-8f43-c6e70916e742",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1788001001733
+      }
+    ],
+    "13.6 Write property tests P2, P3, P5, P7 where feasible": [
+      {
+        "executionId": "c048afeb-9144-47bb-8f43-c6e70916e742",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1788001008247
+      },
+      {
+        "executionId": "6ee22681-ba9c-4704-a65c-e8f6738137b9",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1788018112973
+      }
+    ],
+    "13.7 Write integration test on a preview deployment (onUploadCompleted path)": [
+      {
+        "executionId": "7e0beaae-f5b9-46ca-a0b0-ecc0463b6d91",
+        "chatSessionId": "sess_fbad5b7d-9733-4448-8921-83f8af96a18b",
+        "timestamp": 1788018457399
+      }
+    ]
+  }
+}

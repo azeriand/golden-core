@@ -2,9 +2,11 @@
 
 import pool from '@/lib/db';
 import { NextRequest } from 'next/server';
+import { isDemoEvent, demoGuardResponse } from '@/lib/demo-guard';
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ "event-slug": string } & { "section-id": string }> }) {
   const { "event-slug": eventSlug, "section-id": sectionId } = await params;
+  if (isDemoEvent(eventSlug)) return demoGuardResponse();
   const { name, startDate, finishDate, sectionOrder } = await request.json();
 
   if (!name) {
@@ -48,8 +50,20 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function DELETE(_: any, { params }: { params: Promise<{ "event-slug": string } & { "section-id": string }> }) {
   const { "event-slug": eventSlug, "section-id": sectionId } = await params;
+  if (isDemoEvent(eventSlug)) return demoGuardResponse();
 
   try {
+    // Detach any media in this section first so the delete does not violate the
+    // media -> sections FK. Detached media (section_id = NULL) falls back to the
+    // hardcoded "Sin clasificar" section instead of being lost.
+    await pool.query(
+      `UPDATE media m
+       SET section_id = NULL
+       FROM events e
+       WHERE e.event_id = m.event_id AND e.event_slug = $1 AND m.section_id = $2`,
+      [eventSlug, sectionId]
+    );
+
     const result = await pool.query(
       `DELETE FROM sections s
        USING events e
