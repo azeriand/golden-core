@@ -5,6 +5,7 @@ import LikeCounter from "./like-counter";
 import useEventStore from "../src/stores/event.store";
 import useMediaUiStore from "../src/stores/media-ui.store";
 import useErrorStore from "../src/stores/error.store";
+import { useEffect } from "react";
 
 // Map common MIME types to file extensions so downloads keep a valid extension.
 const MIME_TO_EXTENSION: Record<string, string> = {
@@ -57,6 +58,16 @@ export default function ZoomPhoto({ src, likes: initialLikes, mediaID, liked: in
 
     const likes = media?.likes ?? initialLikes;
     const liked = media?.liked ?? initialLiked;
+
+    // Prevent background scroll while the media is expanded to full view
+    useEffect(() => {
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, []);
 
     const handleDownload = async () => {
         const { downloading } = useMediaUiStore.getState();

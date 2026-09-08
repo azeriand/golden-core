@@ -3,9 +3,11 @@ import { Button } from "azeriand-library"
 import { IoCloseOutline } from "react-icons/io5";
 import { MdOutlineRadioButtonUnchecked, MdOutlineCheckCircleOutline } from "react-icons/md";
 import { FiLogOut } from "react-icons/fi";
+import { FaShare } from "react-icons/fa";
 import { Great_Vibes } from 'next/font/google'
 import useMediaUiStore from "../src/stores/media-ui.store";
 import useAuthStore from "../src/stores/auth.store";
+import useEventStore from "../src/stores/event.store";
 import { useEffect, useRef, useState } from "react";
 
 const greatVibes = Great_Vibes({
@@ -17,6 +19,7 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds 
 
     const { downloadSelected, downloading, selectedIds, isSelectionMode, toggleSelectedMode, selectAll, deselectAll } = useMediaUiStore();
     const logout = useAuthStore((s) => s.logout);
+    const { shareEvent } = useEventStore();
     const [isStuck, setIsStuck] = useState(false);
     const imgRef = useRef<HTMLImageElement>(null);
 
@@ -65,6 +68,9 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds 
                     <p className={`text-2xl font-bold ${greatVibes.className} text-purple-500`}>{event_date}</p>
                     <hr className='w-full border-t border-stone-300 mt-2' />
                     <div className="flex w-full justify-end mt-4 -mb-3 gap-x-2">
+                        <Button appearance='mate' color="purple" intensity={200} size='sm' className="!rounded-full border-purple-200!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9D7BD6' }} onClick={shareEvent}>
+                            <FaShare size={16} />
+                        </Button>
                         {!isSelectionMode && (
                             <>
                                 <Button appearance='mate' color="purple" intensity={200} size='sm' className="py-2! text-xs! rounded-xl! border-purple-200!" style={{ color: '#9D7BD6' }} onClick={toggleSelectedMode}>
@@ -106,6 +112,9 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds 
                     <div className="flex items-center justify-between relative">
                         <h1 className="font-black text-white" style={{ fontSize: '1.2rem', fontWeight: 900 }}>{event_name}</h1>
                         <div className="flex gap-x-2 items-center">
+                            <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={shareEvent}>
+                                <FaShare size={16} />
+                            </Button>
                             {!isSelectionMode && (
                                 <Button appearance='mate' color="white" intensity={500} size='sm' className="py-2! rounded-xl! bg-white/15! backdrop-blur-md! border-white/20! text-white!" onClick={toggleSelectedMode}>
                                     Seleccionar
