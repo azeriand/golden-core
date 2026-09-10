@@ -15,7 +15,9 @@ const greatVibes = Great_Vibes({
   weight: '400',
 })
 
-export default function HomeTopLayout({ event_name, event_date, visibleMediaIds }: { event_name: string, event_date: string, visibleMediaIds: number[] }) {
+const DEFAULT_COVER_IMAGE = "https://img.magnific.com/free-photo/golden-wedding-rings-white-rose-from-wedding-bouquet_8353-10467.jpg?semt=ais_hybrid&w=740&q=80";
+
+export default function HomeTopLayout({ event_name, event_date, visibleMediaIds, event_cover_img }: { event_name: string, event_date: string, visibleMediaIds: number[], event_cover_img?: string | null }) {
 
     const { downloadSelected, downloading, selectedIds, isSelectionMode, toggleSelectedMode, selectAll, deselectAll } = useMediaUiStore();
     const logout = useAuthStore((s) => s.logout);
@@ -56,7 +58,7 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds 
             {/* La imagen se va con el scroll */}
             <img
                 ref={imgRef}
-                src="https://img.magnific.com/free-photo/golden-wedding-rings-white-rose-from-wedding-bouquet_8353-10467.jpg?semt=ais_hybrid&w=740&q=80"
+                src={event_cover_img || DEFAULT_COVER_IMAGE}
                 alt="Imagen del evento"
                 className="w-full h-auto rounded-t-2xl"
             />
