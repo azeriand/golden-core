@@ -1,5 +1,19 @@
 import { create } from "zustand";
 import useEventStore from "./event.store";
+import useAuthStore from "./auth.store";
+
+// Maximum number of media files a NON-ADMIN user can download at once. Kept in
+// sync with the server-side limit in the media download route. Admins have no
+// limit (they can select/download as many as they want).
+export const MAX_DOWNLOAD_MEDIA = 20;
+
+// Message shown to non-admin users when they try to select more than the cap.
+const SELECTION_LIMIT_MESSAGE = `Solo puedes seleccionar un máximo de ${MAX_DOWNLOAD_MEDIA} fotos para descargar. Al finalizar el evento, se te enviarán por email tus fotos favoritas.`;
+
+/** True when the current session belongs to an admin user. */
+function isAdminUser(): boolean {
+  return useAuthStore.getState().user?.isAdmin ?? false;
+}
 
 interface MediaUiState {
   selectedIds: Set<number>;
@@ -38,6 +52,14 @@ const useMediaUiStore = create<MediaUiState>((set, get) => ({
     if (selectedIds.has(id)) {
       selectedIds.delete(id);
     } else {
+      // Admins have no selection cap. Non-admins can select at most
+      // MAX_DOWNLOAD_MEDIA; exceeding it shows the event-favorites notice.
+      if (!isAdminUser() && selectedIds.size >= MAX_DOWNLOAD_MEDIA) {
+        import("./error.store").then(({ default: useErrorStore }) => {
+          useErrorStore.getState().showError(SELECTION_LIMIT_MESSAGE);
+        });
+        return { selectedIds: state.selectedIds };
+      }
       selectedIds.add(id);
     }
 
@@ -49,9 +71,22 @@ const useMediaUiStore = create<MediaUiState>((set, get) => ({
     selectedIds: state.isSelectionMode ? new Set<number>() : state.selectedIds,
   })),
 
-  selectAll: (ids: number[]) => set({
-    selectedIds: new Set(ids),
-  }),
+  selectAll: (ids: number[]) => {
+    // "Select all" is admin-only (the button is hidden for non-admins), and
+    // admins have no cap — select every visible id. Defensive fallback: if a
+    // non-admin ever reaches this, keep the cap and show the notice.
+    if (!isAdminUser()) {
+      const limited = ids.slice(0, MAX_DOWNLOAD_MEDIA);
+      if (ids.length > MAX_DOWNLOAD_MEDIA) {
+        import("./error.store").then(({ default: useErrorStore }) => {
+          useErrorStore.getState().showError(SELECTION_LIMIT_MESSAGE);
+        });
+      }
+      set({ selectedIds: new Set(limited) });
+      return;
+    }
+    set({ selectedIds: new Set(ids) });
+  },
 
   deselectAll: () => set({
     selectedIds: new Set<number>(),
@@ -103,6 +138,13 @@ const useMediaUiStore = create<MediaUiState>((set, get) => ({
     const mediaIds = Array.from(selectedIds);
 
     if (mediaIds.length === 0) {
+      return;
+    }
+
+    // Admins can download any number at once; non-admins are capped.
+    if (!isAdminUser() && mediaIds.length > MAX_DOWNLOAD_MEDIA) {
+      const { default: useErrorStore } = await import("./error.store");
+      useErrorStore.getState().showError(SELECTION_LIMIT_MESSAGE);
       return;
     }
 
