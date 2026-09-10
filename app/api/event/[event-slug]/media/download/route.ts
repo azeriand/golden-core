@@ -5,6 +5,9 @@ import jwt from "jsonwebtoken";
 import pool from "@/lib/db";
 import { ZipArchive } from "archiver";
 
+// Maximum number of media files that can be downloaded in a single request.
+const MAX_DOWNLOAD_MEDIA = 20;
+
 export async function POST(request: NextRequest, { params }: { params: Promise<{ "event-slug": string }> }) {
 
     const { "event-slug": eventSlug } = await params;
@@ -52,6 +55,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             return new Response("No media selected", {
                 status: 400,
             });
+        }
+
+        // Admins can download any number at once; non-admins are capped.
+        if (!decoded.isAdmin && mediaIds.length > MAX_DOWNLOAD_MEDIA) {
+            return new Response(
+                `You can download at most ${MAX_DOWNLOAD_MEDIA} media files at once`,
+                { status: 400 }
+            );
         }
 
         const mediaResult = await pool.query(

@@ -227,7 +227,7 @@ export default function Home() {
       {zoomedMedia && ( 
         <ZoomPhoto src={zoomedMedia.content} likes={zoomedMedia.likes} mediaID={zoomedMedia.media_id} liked={zoomedMedia.liked} type={zoomedMedia.type} eventSlug={slug} onClose={() => setZoomedMedia(null)} />
       )}
-      <HomeTopLayout event_name={event.event_name} event_date={event.event_date} visibleMediaIds={filteredSections.flatMap((s) => s.media.map((m) => m.media_id))} />
+      <HomeTopLayout event_name={event.event_name} event_date={event.event_date} event_cover_img={event.event_cover_img} visibleMediaIds={filteredSections.flatMap((s) => s.media.map((m) => m.media_id))} />
       {state !== "home" && <UserNavbar />}
       {/* Global upload placeholders: rendered ONCE here so they appear INSTANTLY
           on enqueue, regardless of whether any section currently has media in

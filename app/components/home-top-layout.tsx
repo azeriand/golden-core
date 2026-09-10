@@ -1,5 +1,5 @@
 "use client"
-import { Button } from "azeriand-library"
+import { Button, Card } from "azeriand-library"
 import { IoCloseOutline } from "react-icons/io5";
 import { MdOutlineRadioButtonUnchecked, MdOutlineCheckCircleOutline } from "react-icons/md";
 import { FiLogOut } from "react-icons/fi";
@@ -15,12 +15,16 @@ const greatVibes = Great_Vibes({
   weight: '400',
 })
 
-export default function HomeTopLayout({ event_name, event_date, visibleMediaIds }: { event_name: string, event_date: string, visibleMediaIds: number[] }) {
+const DEFAULT_COVER_IMAGE = "https://img.magnific.com/free-photo/golden-wedding-rings-white-rose-from-wedding-bouquet_8353-10467.jpg?semt=ais_hybrid&w=740&q=80";
+
+export default function HomeTopLayout({ event_name, event_date, visibleMediaIds, event_cover_img }: { event_name: string, event_date: string, visibleMediaIds: number[], event_cover_img?: string | null }) {
 
     const { downloadSelected, downloading, selectedIds, isSelectionMode, toggleSelectedMode, selectAll, deselectAll } = useMediaUiStore();
     const logout = useAuthStore((s) => s.logout);
+    const isAdmin = useAuthStore((s) => s.user?.isAdmin ?? false);
     const { shareEvent } = useEventStore();
     const [isStuck, setIsStuck] = useState(false);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const imgRef = useRef<HTMLImageElement>(null);
 
     const allSelected = visibleMediaIds.length > 0 && visibleMediaIds.every((id) => selectedIds.has(id));
@@ -56,7 +60,7 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds 
             {/* La imagen se va con el scroll */}
             <img
                 ref={imgRef}
-                src="https://img.magnific.com/free-photo/golden-wedding-rings-white-rose-from-wedding-bouquet_8353-10467.jpg?semt=ais_hybrid&w=740&q=80"
+                src={event_cover_img || DEFAULT_COVER_IMAGE}
                 alt="Imagen del evento"
                 className="w-full h-auto rounded-t-2xl"
             />
@@ -76,16 +80,18 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds 
                                 <Button appearance='mate' color="purple" intensity={200} size='sm' className="py-2! text-xs! rounded-xl! border-purple-200!" style={{ color: '#9D7BD6' }} onClick={toggleSelectedMode}>
                                     Seleccionar
                                 </Button>
-                                <Button appearance='mate' color="purple" intensity={200} size='sm' className="!rounded-full border-purple-200!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9D7BD6' }} onClick={() => logout()}>
+                                <Button appearance='mate' color="purple" intensity={200} size='sm' className="!rounded-full border-purple-200!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9D7BD6' }} onClick={() => setShowLogoutConfirm(true)}>
                                     <FiLogOut size={16} />
                                 </Button>
                             </>
                         )}
                         {isSelectionMode && (
                             <>
-                                <Button appearance='mate' color="purple" intensity={200} size='sm' className="!rounded-full border-purple-200!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9D7BD6' }} onClick={handleSelectAllToggle}>
-                                    {allSelected ? <MdOutlineCheckCircleOutline size={18} /> : <MdOutlineRadioButtonUnchecked size={18} />}
-                                </Button>
+                                {isAdmin && (
+                                    <Button appearance='mate' color="purple" intensity={200} size='sm' className="!rounded-full border-purple-200!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9D7BD6' }} onClick={handleSelectAllToggle}>
+                                        {allSelected ? <MdOutlineCheckCircleOutline size={18} /> : <MdOutlineRadioButtonUnchecked size={18} />}
+                                    </Button>
+                                )}
                                 <Button appearance='mate' color="purple" intensity={200} size='sm' className="!rounded-full border-purple-200!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9D7BD6' }} onClick={toggleSelectedMode}>
                                     <IoCloseOutline size={18} />
                                 </Button>
@@ -122,15 +128,71 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds 
                             )}
                             {isSelectionMode && (
                                 <>
-                                    <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleSelectAllToggle}>
-                                        {allSelected ? <MdOutlineCheckCircleOutline size={18} /> : <MdOutlineRadioButtonUnchecked size={18} />}
-                                    </Button>
+                                    {isAdmin && (
+                                        <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleSelectAllToggle}>
+                                            {allSelected ? <MdOutlineCheckCircleOutline size={18} /> : <MdOutlineRadioButtonUnchecked size={18} />}
+                                        </Button>
+                                    )}
                                     <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={toggleSelectedMode}>
                                         <IoCloseOutline size={18} />
                                     </Button>
                                 </>
                             )}
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Confirmación antes de cerrar sesión */}
+            {showLogoutConfirm && (
+                <div
+                    className="fixed inset-0 z-[400] flex items-center justify-center bg-black/30 p-4"
+                    style={{
+                        backdropFilter: "blur(5px)",
+                        WebkitBackdropFilter: "blur(5px)",
+                        willChange: "transform",
+                    }}
+                    onClick={() => setShowLogoutConfirm(false)}
+                >
+                    <div onClick={(e) => e.stopPropagation()}>
+                        <Card
+                            appearance="mate"
+                            color="white"
+                            intensity={200}
+                            className="flex flex-col gap-y-4 items-center max-w-sm text-center"
+                            style={{ boxShadow: "0 20px 40px rgba(0, 0, 0, 0.35)", padding: "2.5rem" }}
+                        >
+                            <h2 className="text-purple-700 font-semibold text-lg">
+                                Cerrar sesión
+                            </h2>
+                            <p className="text-sm text-gray-600">
+                                ¿Seguro que quieres salir?
+                            </p>
+                            <div className="flex gap-x-3">
+                                <Button
+                                    appearance="mate"
+                                    color="purple"
+                                    intensity={200}
+                                    size="sm"
+                                    className="rounded-xl! border-purple-200!"
+                                    style={{ color: "#9D7BD6" }}
+                                    onClick={() => setShowLogoutConfirm(false)}
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    appearance="mate"
+                                    color="purple"
+                                    intensity={200}
+                                    size="sm"
+                                    className="rounded-xl! border-purple-200!"
+                                    style={{ color: "#9D7BD6" }}
+                                    onClick={() => { setShowLogoutConfirm(false); logout(); }}
+                                >
+                                    Salir
+                                </Button>
+                            </div>
+                        </Card>
                     </div>
                 </div>
             )}

@@ -102,6 +102,7 @@ if (!jwtSecret) {
       events.event_name,
       events.event_slug,
       events.event_date,
+      events.event_cover_img,
       sections.section_id,
       sections.section_name,
       sections.start_date,
@@ -204,6 +205,7 @@ if (!jwtSecret) {
       event_name: rows[0].event_name,
       event_slug: rows[0].event_slug,
       event_date: rows[0].event_date,
+      event_cover_img: rows[0].event_cover_img ?? null,
       sections,
     };
 
