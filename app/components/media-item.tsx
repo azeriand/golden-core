@@ -24,6 +24,17 @@ export default function MediaItem({index, src, type, likes, liked, mediaID, sect
 
     const isVideo = type?.startsWith("video/");
 
+    // Reserve layout height per cell until the media loads. Without this, the
+    // Next.js <Image> renders with width/height 0 (h-auto) and the blurhash
+    // canvas is absolutely positioned, so each masonry cell collapses to ~0px.
+    // The browser then sees every cell stacked inside the viewport and fires all
+    // `loading="lazy"` requests at once. A fallback aspect-ratio gives each cell
+    // real height so lazy loading can correctly defer off-screen media; once the
+    // real media loads, h-auto restores its true aspect ratio.
+    const FALLBACK_ASPECT_RATIO = "3 / 4";
+    const reserveSpace = !loaded && !errored;
+    const placeholderStyle = reserveSpace ? { aspectRatio: FALLBACK_ASPECT_RATIO } : undefined;
+
     const { isSelectionMode, selectedIds, toggleSelected } = useMediaUiStore();
 
     const selected = selectedIds.has(mediaID);
@@ -38,7 +49,7 @@ export default function MediaItem({index, src, type, likes, liked, mediaID, sect
     };
 
     return(
-        <article key={index} className='w-full h-auto relative overflow-hidden'>
+        <article key={index} style={placeholderStyle} className='w-full h-auto relative overflow-hidden'>
 
             {selected && (
                 <div className="absolute inset-0 z-5 bg-white/30 pointer-events-none transition-opacity duration-200" />
@@ -56,6 +67,8 @@ export default function MediaItem({index, src, type, likes, liked, mediaID, sect
                         src={src}
                         playsInline
                         preload="metadata"
+                        onLoadedMetadata={() => setLoaded(true)}
+                        onError={() => setErrored(true)}
                         className="w-full h-auto pointer-events-none transition-all duration-200"
                     />
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -81,8 +94,8 @@ export default function MediaItem({index, src, type, likes, liked, mediaID, sect
                         width={0}
                         height={0}
                         sizes="50vw"
-                        className={`w-full h-auto cursor-pointer transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
-                        style={{ width: '100%', height: 'auto' }}
+                        className={`w-full cursor-pointer transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'} ${reserveSpace ? 'absolute inset-0 h-full object-cover' : 'h-auto'}`}
+                        style={reserveSpace ? undefined : { width: '100%', height: 'auto' }}
                         onLoad={() => setLoaded(true)}
                         onError={() => setErrored(true)}
                         onTransitionEnd={() => { if (loaded) setFadeComplete(true); }}
