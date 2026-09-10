@@ -21,6 +21,7 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds,
 
     const { downloadSelected, downloading, selectedIds, isSelectionMode, toggleSelectedMode, selectAll, deselectAll } = useMediaUiStore();
     const logout = useAuthStore((s) => s.logout);
+    const isAdmin = useAuthStore((s) => s.user?.isAdmin ?? false);
     const { shareEvent } = useEventStore();
     const [isStuck, setIsStuck] = useState(false);
     const imgRef = useRef<HTMLImageElement>(null);
@@ -85,9 +86,11 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds,
                         )}
                         {isSelectionMode && (
                             <>
-                                <Button appearance='mate' color="purple" intensity={200} size='sm' className="!rounded-full border-purple-200!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9D7BD6' }} onClick={handleSelectAllToggle}>
-                                    {allSelected ? <MdOutlineCheckCircleOutline size={18} /> : <MdOutlineRadioButtonUnchecked size={18} />}
-                                </Button>
+                                {isAdmin && (
+                                    <Button appearance='mate' color="purple" intensity={200} size='sm' className="!rounded-full border-purple-200!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9D7BD6' }} onClick={handleSelectAllToggle}>
+                                        {allSelected ? <MdOutlineCheckCircleOutline size={18} /> : <MdOutlineRadioButtonUnchecked size={18} />}
+                                    </Button>
+                                )}
                                 <Button appearance='mate' color="purple" intensity={200} size='sm' className="!rounded-full border-purple-200!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9D7BD6' }} onClick={toggleSelectedMode}>
                                     <IoCloseOutline size={18} />
                                 </Button>
@@ -124,9 +127,11 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds,
                             )}
                             {isSelectionMode && (
                                 <>
-                                    <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleSelectAllToggle}>
-                                        {allSelected ? <MdOutlineCheckCircleOutline size={18} /> : <MdOutlineRadioButtonUnchecked size={18} />}
-                                    </Button>
+                                    {isAdmin && (
+                                        <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleSelectAllToggle}>
+                                            {allSelected ? <MdOutlineCheckCircleOutline size={18} /> : <MdOutlineRadioButtonUnchecked size={18} />}
+                                        </Button>
+                                    )}
                                     <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={toggleSelectedMode}>
                                         <IoCloseOutline size={18} />
                                     </Button>
