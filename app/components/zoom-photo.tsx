@@ -137,22 +137,36 @@ export default function ZoomPhoto({ src, likes: initialLikes, mediaID, liked: in
             useMediaUiStore.setState({ downloading: false, downloadProgress: 0 });
         }
     };
+    // Close when clicking on the backdrop (outside the media and controls)
+    const handleBackdropClick = (e: React.MouseEvent<HTMLElement>) => {
+        if (e.target === e.currentTarget) {
+            onClose();
+        }
+    };
+
     return(
-        <article className="fixed inset-0 z-[9999] flex flex-col gap-y-4 p-10 items-center justify-center bg-black/80" style={{backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)', willChange: 'transform'}}>
+        <article onClick={handleBackdropClick} className="fixed inset-0 z-[9999] flex flex-col gap-y-4 p-10 items-center justify-center bg-black/80" style={{backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)', willChange: 'transform'}}>
             <FaRegCircleXmark size={24} className='absolute top-6 right-6 text-white cursor-pointer' onClick={onClose} />
-            {type?.startsWith("video/") ? (
-                <video
-                    src={src}
-                    controls
-                    className="w-full flex-1 min-h-0 object-contain rounded-md"
-                />
-            ) : (
-                <img
-                    src={src}
-                    alt="Imagen ampliada"
-                    className="w-full flex-1 min-h-0 object-contain rounded-md"
-                />
-            )}
+            <div
+                onClick={handleBackdropClick}
+                className="flex w-full flex-1 min-h-0 items-center justify-center"
+            >
+                {type?.startsWith("video/") ? (
+                    <video
+                        src={src}
+                        controls
+                        onClick={(e) => e.stopPropagation()}
+                        className="max-w-full max-h-full object-contain rounded-md"
+                    />
+                ) : (
+                    <img
+                        src={src}
+                        alt="Imagen ampliada"
+                        onClick={(e) => e.stopPropagation()}
+                        className="max-w-full max-h-full object-contain rounded-md"
+                    />
+                )}
+            </div>
             <section className='flex justify-end gap-4 items-center w-full'>
                 <LikeCounter likes={likes} mediaID={mediaID} liked={liked} className='h-full'/>
                 <Button onClick={handleDownload}>
