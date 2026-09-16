@@ -1,0 +1,30 @@
+{
+  "name": "golden-core-poster-worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Separate, long-running Poster_Worker service that polls the public.poster_jobs queue, extracts an early video frame with ffmpeg, downscales it, uploads the poster to Vercel Blob, and records media.poster_url. Deployed to Railway; NOT part of the Vercel serverless request path (Requirements 6.1, 6.2).",
+  "type": "module",
+  "engines": {
+    "node": ">=20.20.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "backfill": "node dist/backfill.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.3.1",
+    "pg": "^8.20.0",
+    "sharp": "^0.35.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/pg": "^8.20.0",
+    "fast-check": "^4.9.0",
+    "typescript": "^5",
+    "vitest": "^3.2.7"
+  }
+}

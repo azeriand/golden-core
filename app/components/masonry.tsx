@@ -101,7 +101,7 @@ export default function Masonry({ images, sections, onZoom, showPlaceholders = t
                     />
                 ))}
                 {imagesOdd.map((media: Media, index) => (
-                    <MediaItem key={media.media_id} index={index} src={media.content} type={media.type} likes={media.likes} mediaID={media.media_id} liked={media.liked} section_id={media.section_id} sections={sections} blurhash={media.blurhash} username={media.username} onZoom={() => onZoom(media)}/>
+                    <MediaItem key={media.media_id} index={index} src={media.content} type={media.type} poster_url={media.poster_url} likes={media.likes} mediaID={media.media_id} liked={media.liked} section_id={media.section_id} sections={sections} blurhash={media.blurhash} username={media.username} onZoom={() => onZoom(media)}/>
                 ))}
             </div>
             <div className='flex flex-col gap-1'>
@@ -115,7 +115,7 @@ export default function Masonry({ images, sections, onZoom, showPlaceholders = t
                     />
                 ))}
                 {imagesEven.map((media: Media, index) => (
-                    <MediaItem key={media.media_id} index={index} src={media.content} type={media.type} likes={media.likes} mediaID={media.media_id} liked={media.liked} section_id={media.section_id} sections={sections} blurhash={media.blurhash} username={media.username} onZoom={() => onZoom(media)}/>
+                    <MediaItem key={media.media_id} index={index} src={media.content} type={media.type} poster_url={media.poster_url} likes={media.likes} mediaID={media.media_id} liked={media.liked} section_id={media.section_id} sections={sections} blurhash={media.blurhash} username={media.username} onZoom={() => onZoom(media)}/>
                 ))}
             </div>
         </section>

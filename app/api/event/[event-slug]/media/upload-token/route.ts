@@ -22,6 +22,7 @@ import pool from '@/lib/db';
 import { verifyRequest } from '@/lib/auth';
 import { isDemoEvent, isDemoUser, demoGuardResponse } from '@/lib/demo-guard';
 import { resolveSectionIdByTime, isValidTimeOfDay } from '@/lib/section-match';
+import { enqueuePosterJob, isVideoType } from '@/lib/poster-jobs';
 
 export const runtime = 'nodejs';
 
@@ -531,6 +532,70 @@ export async function POST(
                             dbErr,
                         );
                         throw dbErr;
+                    }
+
+                    // 8. ENQUEUE POSTER JOB for videos (design Component 4,
+                    //    Req 4.1, 4.2, 4.3, 4.4, 4.5, 5.1).
+                    //
+                    //    Video-only: the completed blob's contentType is exactly
+                    //    the value inserted into media.type above, so it is the
+                    //    single source of truth for "is this a video?" (Req 4.3).
+                    //    Images enqueue nothing.
+                    if (isVideoType(blob.contentType)) {
+                        // The idempotent INSERT above uses ON CONFLICT DO NOTHING
+                        // without RETURNING, so on the no-op branch (confirm won
+                        // the race) we have no media_id in hand. Resolve it by
+                        // upload_id so enqueue works on BOTH the freshly-inserted
+                        // and the already-existing branches (Req 4.1, 4.2).
+                        let mediaId: number;
+                        try {
+                            const mediaResult = await pool.query(
+                                `SELECT media_id FROM media WHERE upload_id = $1`,
+                                [parsed.uploadId],
+                            );
+                            if (mediaResult.rows.length === 0) {
+                                // Should not happen: the row was just inserted or
+                                // already existed. Nothing to enqueue against;
+                                // log and return without failing the webhook.
+                                console.error(
+                                    'onUploadCompleted: no media row found to enqueue poster job',
+                                    parsed.uploadId,
+                                );
+                                return;
+                            }
+                            mediaId = mediaResult.rows[0].media_id;
+                        } catch (dbErr) {
+                            // Transient DB error resolving media_id — rethrow so
+                            // Vercel Blob retries the webhook (Req 4.4). ON
+                            // CONFLICT DO NOTHING makes the retry safe (Req 4.5).
+                            console.error(
+                                'onUploadCompleted: error resolving media_id for poster enqueue (will allow retry)',
+                                dbErr,
+                            );
+                            throw dbErr;
+                        }
+
+                        try {
+                            // Idempotent per media_id via the unique index +
+                            // ON CONFLICT DO NOTHING inside the helper (Req 5.1).
+                            const inserted = await enqueuePosterJob(pool, mediaId);
+                            console.error(
+                                'onUploadCompleted: poster job enqueue',
+                                { media_id: mediaId, inserted },
+                            );
+                        } catch (enqueueErr) {
+                            // ERROR SEMANTICS DIFFER FROM CONFIRM: the webhook has
+                            // no user-facing response and Vercel Blob retries on
+                            // throw, so a transient enqueue DB error is RETHROWN
+                            // so the webhook is retried (Req 4.4). The helper's
+                            // ON CONFLICT DO NOTHING guarantees the retry cannot
+                            // create a duplicate job (Req 4.5, 5.1).
+                            console.error(
+                                'onUploadCompleted: poster job enqueue failed (will allow retry)',
+                                { media_id: mediaId, error: enqueueErr },
+                            );
+                            throw enqueueErr;
+                        }
                     }
                 }
             },

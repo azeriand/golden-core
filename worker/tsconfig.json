@@ -1,0 +1,25 @@
+{
+  // Standalone TypeScript config for the Poster_Worker service. Unlike the root
+  // Next.js tsconfig (moduleResolution "bundler", noEmit true), this service is a
+  // plain long-running Node process built with `tsc` and started with
+  // `node dist/index.js` on Railway (Requirements 6.1, 6.2). We therefore emit
+  // real JS to dist/ and use NodeNext module resolution.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "dist",
+    "rootDir": "src",
+    "strict": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "declaration": false,
+    "sourceMap": true,
+    "noEmit": false,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "tests"]
+}

@@ -35,7 +35,7 @@ import { NextRequest } from 'next/server';
 // `vi.mock` factories are hoisted above imports, so any values they close over
 // must be created via `vi.hoisted` (also hoisted) rather than as ordinary
 // top-level consts.
-const { queryMock, headMock, delMock, FakeBlobNotFoundError } = vi.hoisted(() => {
+const { queryMock, headMock, delMock, enqueueMock, FakeBlobNotFoundError } = vi.hoisted(() => {
     class FakeBlobNotFoundError extends Error {
         constructor() {
             super('Blob not found');
@@ -46,6 +46,7 @@ const { queryMock, headMock, delMock, FakeBlobNotFoundError } = vi.hoisted(() =>
         queryMock: vi.fn(),
         headMock: vi.fn(),
         delMock: vi.fn(),
+        enqueueMock: vi.fn(),
         FakeBlobNotFoundError,
     };
 });
@@ -59,6 +60,19 @@ vi.mock('@vercel/blob', () => ({
     del: (...args: unknown[]) => delMock(...args),
     BlobNotFoundError: FakeBlobNotFoundError,
 }));
+
+// Mock the enqueue helper so wiring tests observe whether/how the confirm route
+// calls it, without touching a real poster_jobs table. isVideoType stays REAL
+// (it is a pure predicate) so the video-vs-image gating is exercised end-to-end.
+vi.mock('@/lib/poster-jobs', async () => {
+    const actual = await vi.importActual<typeof import('@/lib/poster-jobs')>(
+        '@/lib/poster-jobs',
+    );
+    return {
+        ...actual,
+        enqueuePosterJob: (...args: unknown[]) => enqueueMock(...args),
+    };
+});
 
 // Import AFTER mocks are registered.
 import { POST } from '@/app/api/event/[event-slug]/media/confirm/route';
@@ -177,8 +191,12 @@ beforeEach(() => {
     queryMock.mockReset();
     headMock.mockReset();
     delMock.mockReset();
+    enqueueMock.mockReset();
     headMock.mockResolvedValue({ url: 'ok' });
     delMock.mockResolvedValue(undefined);
+    // Default: enqueue succeeds (a new job was inserted). Individual tests
+    // override this to assert video-only gating and swallow-and-log behavior.
+    enqueueMock.mockResolvedValue(true);
 });
 
 afterEach(() => {
@@ -565,5 +583,140 @@ describe('confirm route — DB failure cleanup', () => {
         expect(text).toContain('Could not save media');
         expect(text).not.toContain('connection refused');
         expect(text).not.toContain('db exploded');
+    });
+});
+
+// A valid video confirm body: a video/* content type plus a matching blobUrl
+// under the event/upload prefix. Reuses validBody's shape.
+function videoBody(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return validBody({
+        contentType: 'video/mp4',
+        filename: 'clip.mp4',
+        ...overrides,
+    });
+}
+
+describe('confirm route — poster-job enqueue wiring (Task 3)', () => {
+    // Req 3.1: a NEW video row (201) enqueues exactly one poster job for its
+    // media_id.
+    it('enqueues a poster job for a newly inserted video (201)', async () => {
+        const insertedRow = {
+            media_id: 42,
+            upload_id: VALID_UUID,
+            content: 'url',
+            user_id: 5,
+            type: 'video/mp4',
+            date: FIXED_DATE,
+            section_id: SECTION_ID,
+            blurhash: null,
+        };
+        planQueries({ insert: [insertedRow] });
+
+        const res = await POST(makeRequest(videoBody()), params());
+
+        expect(res.status).toBe(201);
+        expect(enqueueMock).toHaveBeenCalledTimes(1);
+        // Called with the shared pool and the row's media_id (video-only).
+        expect(enqueueMock.mock.calls[0][1]).toBe(42);
+    });
+
+    // Req 3.2: an image row must NOT enqueue a poster job.
+    it('does NOT enqueue a poster job for a newly inserted image (201)', async () => {
+        const insertedRow = {
+            media_id: 43,
+            upload_id: VALID_UUID,
+            content: 'url',
+            user_id: 5,
+            type: 'image/jpeg',
+            date: FIXED_DATE,
+            section_id: SECTION_ID,
+            blurhash: null,
+        };
+        planQueries({ insert: [insertedRow] });
+
+        const res = await POST(makeRequest(validBody()), params());
+
+        expect(res.status).toBe(201);
+        expect(enqueueMock).not.toHaveBeenCalled();
+    });
+
+    // Req 3.3 + 5.1: the already-exists (200) branch enqueues for a video too,
+    // relying on the idempotent helper to avoid duplicates. The route calls
+    // enqueue exactly once; the ON CONFLICT DO NOTHING inside the helper is what
+    // guarantees no duplicate job.
+    it('enqueues (idempotently) on the already-exists branch for a video (200)', async () => {
+        const existingRow = {
+            media_id: 77,
+            upload_id: VALID_UUID,
+            content: 'existing',
+            user_id: 5,
+            type: 'video/mp4',
+            date: FIXED_DATE,
+            section_id: SECTION_ID,
+            blurhash: null,
+        };
+        // Existing-job case: helper reports no new row inserted (false).
+        enqueueMock.mockResolvedValue(false);
+        planQueries({ insert: [], existing: [existingRow] });
+
+        const res = await POST(makeRequest(videoBody()), params());
+
+        expect(res.status).toBe(200);
+        expect(enqueueMock).toHaveBeenCalledTimes(1);
+        expect(enqueueMock.mock.calls[0][1]).toBe(77);
+    });
+
+    // Req 3.2 on the 200 branch: an existing image row does not enqueue.
+    it('does NOT enqueue on the already-exists branch for an image (200)', async () => {
+        const existingRow = {
+            media_id: 78,
+            upload_id: VALID_UUID,
+            content: 'existing',
+            user_id: 5,
+            type: 'image/jpeg',
+            date: FIXED_DATE,
+            section_id: SECTION_ID,
+            blurhash: null,
+        };
+        planQueries({ insert: [], existing: [existingRow] });
+
+        const res = await POST(makeRequest(validBody()), params());
+
+        expect(res.status).toBe(200);
+        expect(enqueueMock).not.toHaveBeenCalled();
+    });
+
+    // Req 3.5: a thrown enqueue error is swallowed — media creation already
+    // succeeded, so the successful media response is STILL returned.
+    it('swallows an enqueue error and still returns the successful media response (201)', async () => {
+        const insertedRow = {
+            media_id: 99,
+            upload_id: VALID_UUID,
+            content: 'url',
+            user_id: 5,
+            type: 'video/mp4',
+            date: FIXED_DATE,
+            section_id: SECTION_ID,
+            blurhash: null,
+        };
+        planQueries({ insert: [insertedRow] });
+        enqueueMock.mockRejectedValueOnce(
+            new Error('poster_jobs enqueue: connection refused at 10.0.0.1'),
+        );
+        // Silence the expected server-side error log for a clean test run.
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        const res = await POST(makeRequest(videoBody()), params());
+
+        // Media creation is unaffected by the enqueue failure.
+        expect(res.status).toBe(201);
+        const body = await res.json();
+        expect(body).toMatchObject({ media_id: 99, type: 'video/mp4' });
+        // The enqueue was attempted (and threw), but the response still returned.
+        expect(enqueueMock).toHaveBeenCalledTimes(1);
+        // Blob cleanup must NOT run — media was persisted; only enqueue failed.
+        expect(delMock).not.toHaveBeenCalled();
+
+        errorSpy.mockRestore();
     });
 });

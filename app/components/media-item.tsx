@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import LikeCounter from "./like-counter";
 import BlurhashCanvas from "./blurhash-canvas";
@@ -9,10 +9,21 @@ import useMediaUiStore from "../src/stores/media-ui.store";
 import { MdOutlineRadioButtonUnchecked } from "react-icons/md";
 import { MdOutlineCheckCircleOutline } from "react-icons/md";
 
-export default function MediaItem({index, src, type, likes, liked, mediaID, section_id, sections, blurhash, username, onZoom}: {index: number, src: string, type: string | null, likes: number, liked: boolean, mediaID: number, section_id: number|null, sections: Section[], blurhash: string | null, username: string | null, onZoom: () => void}) {
+// How long we wait for a poster image to paint before falling back to the
+// placeholder. Req 12.5: "IF a poster ... does not load within a configured
+// timeout, THEN THE Gallery SHALL display the placeholder so every video slot
+// shows a visible element." Kept as a module constant so the value is a single
+// source of truth (and easy to tune) rather than a magic number inline.
+const POSTER_LOAD_TIMEOUT_MS = 8000;
+
+export default function MediaItem({index, src, type, poster_url, likes, liked, mediaID, section_id, sections, blurhash, username, onZoom}: {index: number, src: string, type: string | null, poster_url?: string | null, likes: number, liked: boolean, mediaID: number, section_id: number|null, sections: Section[], blurhash: string | null, username: string | null, onZoom: () => void}) {
     const [loaded, setLoaded] = useState(false);
     const [errored, setErrored] = useState(false);
     const [blurhashFailed, setBlurhashFailed] = useState(false);
+    // Whether the video poster failed to load or timed out. When true we fall
+    // back to the placeholder even though a poster_url was provided, so every
+    // video slot always shows a visible element (Req 12.5).
+    const [posterFailed, setPosterFailed] = useState(false);
     // Kept mounted until the image's opacity fade-in completes, so the placeholder
     // stays visible BEHIND the image through the 300ms transition (no flash of the
     // article background). Once the opaque image fully covers it, we unmount it.
@@ -23,6 +34,37 @@ export default function MediaItem({index, src, type, likes, liked, mediaID, sect
     const handleBlurhashDecodeError = useCallback(() => setBlurhashFailed(true), []);
 
     const isVideo = type?.startsWith("video/");
+
+    // A poster is renderable only when a non-null URL was provided AND it has
+    // not failed/timed out. When false we render the placeholder + play overlay
+    // instead, while the <video> itself still plays when opened (Req 15.1).
+    const hasPoster = isVideo && !!poster_url && !posterFailed;
+
+    // Timeout guard for poster loading (Req 12.5). While a poster_url is present
+    // but has not yet loaded, arm a timer; if the poster does not paint in time
+    // we flip to the placeholder. The timer is cleared on a successful poster
+    // load (below, via onLoadedData) and on unmount, so a poster that loads in
+    // time never trips the fallback.
+    const posterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => {
+        // Only guard while we actually have a poster to wait for and it has not
+        // yet loaded or failed. Re-runs whenever these inputs change.
+        if (!isVideo || !poster_url || loaded || posterFailed) return;
+        posterTimerRef.current = setTimeout(() => setPosterFailed(true), POSTER_LOAD_TIMEOUT_MS);
+        return () => {
+            if (posterTimerRef.current) clearTimeout(posterTimerRef.current);
+        };
+    }, [isVideo, poster_url, loaded, posterFailed]);
+
+    // On a successful poster paint: clear the timeout guard and mark loaded so
+    // the fallback can never fire afterwards.
+    const handlePosterLoaded = useCallback(() => {
+        if (posterTimerRef.current) clearTimeout(posterTimerRef.current);
+        setLoaded(true);
+    }, []);
+
+    // A poster that fails to load falls back to the placeholder (Req 12.5).
+    const handlePosterError = useCallback(() => setPosterFailed(true), []);
 
     // Reserve layout height per cell until the media loads. Without this, the
     // Next.js <Image> renders with width/height 0 (h-auto) and the blurhash
@@ -62,16 +104,45 @@ export default function MediaItem({index, src, type, likes, liked, mediaID, sect
             )}
 
             {isVideo ? (
-                <div className="relative cursor-pointer" onClick={handleClick}>
-                    <video
-                        src={src}
-                        playsInline
-                        preload="metadata"
-                        onLoadedMetadata={() => setLoaded(true)}
-                        onError={() => setErrored(true)}
-                        className="w-full h-auto pointer-events-none transition-all duration-200"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
+                <div className="relative cursor-pointer" style={hasPoster ? undefined : placeholderStyle} onClick={handleClick}>
+                    {hasPoster ? (
+                        // Poster ready: render the video with the generated poster
+                        // frame. preload="none" avoids fetching video bytes just to
+                        // paint a preview — the poster already provides one, and it
+                        // renders consistently across devices incl. iOS Safari
+                        // (Req 12.2, 12.3). onLoadedData fires once the poster frame
+                        // paints, which clears the timeout guard (Req 12.5).
+                        <video
+                            data-testid="poster-video"
+                            src={src}
+                            poster={poster_url ?? undefined}
+                            playsInline
+                            preload="none"
+                            onLoadedData={handlePosterLoaded}
+                            onError={handlePosterError}
+                            className="w-full h-auto pointer-events-none transition-all duration-200"
+                        />
+                    ) : (
+                        // No poster yet (poster_url is null) OR the poster failed /
+                        // timed out: reserve layout space with a placeholder so the
+                        // slot is a visible element and the gallery stays consistent
+                        // without blocking on poster availability (Req 12.1, 12.4,
+                        // 12.5). The video still plays when opened (Req 15.1); we keep
+                        // it mounted with preload="none" so no bytes are fetched up
+                        // front. onError here also trips the placeholder fallback.
+                        <>
+                            <div data-testid="poster-placeholder" className="w-full h-full absolute inset-0 bg-black/10" style={{ aspectRatio: FALLBACK_ASPECT_RATIO }} />
+                            <video
+                                data-testid="poster-video"
+                                src={src}
+                                playsInline
+                                preload="none"
+                                onError={handlePosterError}
+                                className="w-full h-auto pointer-events-none opacity-0"
+                            />
+                        </>
+                    )}
+                    <div data-testid="play-overlay" className="absolute inset-0 flex items-center justify-center">
                         <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21" /></svg>
                         </div>
