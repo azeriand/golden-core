@@ -114,6 +114,7 @@ if (!jwtSecret) {
       media.date,
       media.type,
       media.blurhash,
+      media.poster_url,
       users.username,
       COALESCE(l.likes, 0) AS likes,
       EXISTS (
@@ -182,10 +183,12 @@ if (!jwtSecret) {
     };
 
     for (const row of rows) {
-      const { media_id, media_section_id, user_id, content, likes, liked, date, type, blurhash, username } = row;
+      const { media_id, media_section_id, user_id, content, likes, liked, date, type, blurhash, poster_url, username } = row;
       if (media_id == null) continue; // event with no media (LEFT JOIN null row)
 
-      const mediaItem: Media = { media_id, user_id, content, likes, liked, date, type, section_id: media_section_id, blurhash, username };
+      // poster_url is a nullable column (migration 004); a NULL DB value maps to
+      // `null` in the DTO, meaning "no poster ready yet" (Req 11.2, 11.3, 15.4).
+      const mediaItem: Media = { media_id, user_id, content, likes, liked, date, type, section_id: media_section_id, blurhash, poster_url: poster_url ?? null, username };
       const target =
         media_section_id == null
           ? ensureUnclassified()

@@ -9,4 +9,5 @@ export interface Media {
     section_id: number | null;
     blurhash: string | null;
     username: string | null;
+    poster_url: string | null;
 }

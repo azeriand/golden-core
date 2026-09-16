@@ -1,0 +1,10 @@
+# Dependencies installed per-service (the worker has its own package.json).
+node_modules/
+
+# Compiled output produced by `npm run build` (tsc -> dist/). Built in CI / the
+# Docker image at deploy time; never committed.
+dist/
+
+# Local env files (secrets are provided by the Railway runtime environment).
+.env
+.env.*

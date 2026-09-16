@@ -36,6 +36,7 @@ import pool from '@/lib/db';
 import { verifyRequest } from '@/lib/auth';
 import { isDemoEvent, isDemoUser, demoGuardResponse } from '@/lib/demo-guard';
 import { resolveSectionIdByTime, isValidTimeOfDay } from '@/lib/section-match';
+import { enqueuePosterJob, isVideoType } from '@/lib/poster-jobs';
 
 export const runtime = 'nodejs';
 
@@ -198,6 +199,7 @@ async function shapeMediaRow(
         date: string;
         section_id: number | null;
         blurhash: string | null;
+        poster_url?: string | null;
     },
     viewerUserId: number,
 ) {
@@ -229,6 +231,10 @@ async function shapeMediaRow(
         type: row.type,
         section_id: row.section_id,
         blurhash: row.blurhash,
+        // A freshly created video has no poster yet, so this is null until the
+        // worker records one; keeps the response matching the Media DTO shape
+        // (Req 11.4).
+        poster_url: row.poster_url ?? null,
         username: info.username ?? null,
     };
 }
@@ -253,6 +259,45 @@ function blobUrlBelongsToEvent(
     }
     const expectedPrefix = `/events/${eventId}/${uploadId}/`;
     return pathname.startsWith(expectedPrefix);
+}
+
+/**
+ * Enqueue a poster job for a just-created/confirmed VIDEO media row, video-only
+ * and swallow-and-log on failure (design Component 3, Req 3.1/3.2/3.3/3.4/3.5).
+ *
+ * Runs on BOTH the newly-inserted (201) and already-exists (200) branches so a
+ * video always converges on exactly one poster job — the enqueue itself is
+ * idempotent (unique index on poster_jobs.media_id + ON CONFLICT DO NOTHING),
+ * so re-running across the two branches never duplicates a job (Req 3.3, 5.1).
+ *
+ * CRITICAL: media creation has ALREADY succeeded and been committed by the time
+ * this runs. An enqueue failure must NEVER fail the media response, so a genuine
+ * DB error is caught, logged with non-secret context only (media_id + message),
+ * and swallowed — the media response still returns (Req 3.5). A later webhook
+ * retry or the one-time backfill can still create the job for such a row.
+ *
+ * Only videos get a poster job; image rows are left untouched (Req 3.2). The
+ * `type` column is the LIVE MIME string (e.g. 'video/mp4'); isVideoType is the
+ * single shared source of truth for "is this a video?".
+ */
+async function enqueuePosterJobForVideo(row: {
+    media_id: number;
+    type: string | null;
+}): Promise<void> {
+    if (!isVideoType(row.type)) return; // image (or unknown) -> no poster job.
+    try {
+        await enqueuePosterJob(pool, row.media_id);
+    } catch (enqueueError) {
+        // Non-secret context only (media_id + message); never DATABASE_URL /
+        // BLOB_READ_WRITE_TOKEN. Swallow: the media response must still succeed.
+        console.error(
+            'confirm: poster-job enqueue failed (media persisted, response still returned)',
+            'media_id',
+            row.media_id,
+            'error',
+            enqueueError instanceof Error ? enqueueError.message : String(enqueueError),
+        );
+    }
 }
 
 export async function POST(
@@ -380,8 +425,14 @@ export async function POST(
         );
 
         if (insertResult.rows.length > 0) {
-            // Newly inserted row.
-            return Response.json(await shapeMediaRow(insertResult.rows[0], user.userId), { status: 201 });
+            // Newly inserted row. Shape the response first (media creation is
+            // done), then enqueue a poster job for videos only — swallow-and-log
+            // so an enqueue failure never fails the media response (Req 3.1,
+            // 3.2, 3.4, 3.5).
+            const insertedRow = insertResult.rows[0];
+            const shaped = await shapeMediaRow(insertedRow, user.userId);
+            await enqueuePosterJobForVideo(insertedRow);
+            return Response.json(shaped, { status: 201 });
         }
 
         // Conflict: a row already exists for this uploadId. Fetch and return it.
@@ -429,7 +480,13 @@ export async function POST(
                     existingRow = updated.rows[0];
                 }
             }
-            return Response.json(await shapeMediaRow(existingRow, user.userId), { status: 200 });
+            // Already-exists branch: ensure a poster job exists for this video
+            // without creating a duplicate (the enqueue is idempotent). Runs on
+            // the 200 path so a video confirmed after the webhook (or a repeated
+            // confirm) still converges on exactly one job (Req 3.3, 5.1).
+            const shaped = await shapeMediaRow(existingRow, user.userId);
+            await enqueuePosterJobForVideo(existingRow);
+            return Response.json(shaped, { status: 200 });
         }
 
         // Extremely unlikely: conflict reported but no row found on re-select

@@ -1,0 +1,6 @@
+# Fixture videos for frame-extraction tests live here.
+#
+# When ffmpeg is available, `frame-extraction.test.ts` generates a tiny
+# `sample.mp4` (ffmpeg testsrc, ~1s, small) into this directory at test time and
+# extracts a poster from it. The generated file is intentionally not committed;
+# it is produced on demand so the fixture stays tiny and reproducible.
