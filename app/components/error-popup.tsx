@@ -42,11 +42,11 @@ export default function ErrorPopup() {
           <p className="text-sm text-gray-700">{message}</p>
           <Button
             appearance="mate"
-            color="purple"
+            color="pink"
             intensity={200}
             size="sm"
-            className="rounded-xl! border-purple-200!"
-            style={{ color: "#9D7BD6" }}
+            className="rounded-xl! border-pink-200!"
+            style={{ color: "#E83E8C" }}
             onClick={clearError}
           >
             Entendido

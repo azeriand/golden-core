@@ -25,8 +25,8 @@ export default function SignUp({ onLogin }: Props) {
                 <Input appearance='mate' color='amber' intensity={700} placeholder='Confirmar contraseña' type='password' value={confirmPassword} onChange={setConfirmPassword as any} className={fieldClass('confirmPassword')} style={fieldStyle('confirmPassword')} />
                 {error && <p className='text-red-400 text-xs text-center'>{error}</p>}
             </div>
-            <Button appearance='mate' color='purple' intensity={700} className='text-gray-600' onClick={loading ? undefined : register}>{loading ? 'Registrando...' : 'Registrarse'}</Button>
-            <Button appearance='ghost' color='gray' intensity={500} className='text-gray-400! text-xs!' onClick={onLogin}>¿Ya tienes cuenta? <span className="text-purple-700">Inicia sesión</span></Button>
+            <Button appearance='mate' color='pink' intensity={700} className='text-gray-600' onClick={loading ? undefined : register}>{loading ? 'Registrando...' : 'Registrarse'}</Button>
+            <Button appearance='ghost' color='gray' intensity={500} className='text-gray-400! text-xs!' onClick={onLogin}>¿Ya tienes cuenta? <span className="text-pink-700">Inicia sesión</span></Button>
         </>
     )
 }

@@ -173,8 +173,8 @@ export default function Home() {
         style={{
           width: '48px',
           height: '48px',
-          border: '4px solid #E3D1F4',
-          borderTopColor: '#9D7BD6',
+          border: '4px solid #F8D6E4',
+          borderTopColor: '#E83E8C',
         }}
       />
     </div>
@@ -199,9 +199,9 @@ export default function Home() {
   if (!event) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-y-2 px-6 text-center">
-        <p className="text-7xl font-black text-purple-300">404</p>
-        <h1 className="text-2xl font-bold text-purple-700">Ups... evento no encontrado</h1>
-        <Button appearance='mate' color="purple" intensity={200} size='sm' className="mt-4 rounded-xl! border-purple-200!" style={{ color: '#9D7BD6' }} onClick={() => router.push('/demo')}>
+        <p className="text-7xl font-black text-pink-300">404</p>
+        <h1 className="text-2xl font-bold text-pink-700">Ups... evento no encontrado</h1>
+        <Button appearance='mate' color="pink" intensity={200} size='sm' className="mt-4 rounded-xl! border-pink-200!" style={{ color: '#E83E8C' }} onClick={() => router.push('/demo')}>
           Ir a la demo
         </Button>
       </div>

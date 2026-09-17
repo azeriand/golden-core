@@ -23,8 +23,8 @@ export default function LogIn({ onSignup }: Props) {
                 <Input appearance='mate' color='amber' intensity={700} placeholder='Contraseña' type='password' value={password} onChange={setPassword as any} className={fieldClass('password')} style={fieldStyle('password')} />
                 {error && <p className='text-red-400 text-xs text-center'>{error}</p>}
             </div>
-            <Button appearance='mate' color='purple' intensity={500} className='text-gray-600' onClick={loading ? undefined : login}>{loading ? 'Iniciando...' : 'Iniciar sesión'}</Button>
-            <Button appearance='ghost' color='gray' intensity={500} className='text-gray-400! text-xs!' onClick={onSignup}>¿No tienes cuenta? <span className="text-purple-700">Regístrate</span></Button>
+            <Button appearance='mate' color='pink' intensity={500} className='text-gray-600' onClick={loading ? undefined : login}>{loading ? 'Iniciando...' : 'Iniciar sesión'}</Button>
+            <Button appearance='ghost' color='gray' intensity={500} className='text-gray-400! text-xs!' onClick={onSignup}>¿No tienes cuenta? <span className="text-pink-700">Regístrate</span></Button>
         </>
     )
 }
