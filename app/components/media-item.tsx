@@ -43,8 +43,8 @@ export default function MediaItem({index, src, type, poster_url, likes, liked, m
     // Timeout guard for poster loading (Req 12.5). While a poster_url is present
     // but has not yet loaded, arm a timer; if the poster does not paint in time
     // we flip to the placeholder. The timer is cleared on a successful poster
-    // load (below, via onLoadedData) and on unmount, so a poster that loads in
-    // time never trips the fallback.
+    // load (below, via the poster <img>'s onLoad) and on unmount, so a poster
+    // that loads in time never trips the fallback.
     const posterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => {
         // Only guard while we actually have a poster to wait for and it has not
@@ -56,8 +56,8 @@ export default function MediaItem({index, src, type, poster_url, likes, liked, m
         };
     }, [isVideo, poster_url, loaded, posterFailed]);
 
-    // On a successful poster paint: clear the timeout guard and mark loaded so
-    // the fallback can never fire afterwards.
+    // On a successful poster paint (the poster <img>'s onLoad): clear the
+    // timeout guard and mark loaded so the fallback can never fire afterwards.
     const handlePosterLoaded = useCallback(() => {
         if (posterTimerRef.current) clearTimeout(posterTimerRef.current);
         setLoaded(true);
@@ -106,19 +106,26 @@ export default function MediaItem({index, src, type, poster_url, likes, liked, m
             {isVideo ? (
                 <div className="relative cursor-pointer" style={hasPoster ? undefined : placeholderStyle} onClick={handleClick}>
                     {hasPoster ? (
-                        // Poster ready: render the video with the generated poster
-                        // frame. preload="none" avoids fetching video bytes just to
-                        // paint a preview — the poster already provides one, and it
-                        // renders consistently across devices incl. iOS Safari
-                        // (Req 12.2, 12.3). onLoadedData fires once the poster frame
-                        // paints, which clears the timeout guard (Req 12.5).
-                        <video
+                        // Poster ready: render the generated poster frame as a real
+                        // <img> (via next/image), NOT the <video>'s `poster`
+                        // attribute. A <video preload="none"> never fires
+                        // `loadedData` because the browser fetches no video bytes,
+                        // so relying on it left `loaded` false and the timeout guard
+                        // below always tripped the placeholder — hiding a poster that
+                        // had actually painted. An <img> fires onLoad/onError
+                        // reliably on every browser (incl. iOS Safari), renders the
+                        // same consistent frame (Req 12.2, 12.3), and downloads the
+                        // poster exactly once. The <video> itself is only loaded when
+                        // the user opens the zoom viewer to play it (Req 15.1), so no
+                        // video bytes are fetched in the gallery.
+                        <Image
                             data-testid="poster-video"
-                            src={src}
-                            poster={poster_url ?? undefined}
-                            playsInline
-                            preload="none"
-                            onLoadedData={handlePosterLoaded}
+                            src={poster_url as string}
+                            alt={`Vídeo ${index}`}
+                            width={0}
+                            height={0}
+                            sizes="50vw"
+                            onLoad={handlePosterLoaded}
                             onError={handlePosterError}
                             className="w-full h-auto pointer-events-none transition-all duration-200"
                         />
@@ -127,20 +134,8 @@ export default function MediaItem({index, src, type, poster_url, likes, liked, m
                         // timed out: reserve layout space with a placeholder so the
                         // slot is a visible element and the gallery stays consistent
                         // without blocking on poster availability (Req 12.1, 12.4,
-                        // 12.5). The video still plays when opened (Req 15.1); we keep
-                        // it mounted with preload="none" so no bytes are fetched up
-                        // front. onError here also trips the placeholder fallback.
-                        <>
-                            <div data-testid="poster-placeholder" className="w-full h-full absolute inset-0 bg-black/10" style={{ aspectRatio: FALLBACK_ASPECT_RATIO }} />
-                            <video
-                                data-testid="poster-video"
-                                src={src}
-                                playsInline
-                                preload="none"
-                                onError={handlePosterError}
-                                className="w-full h-auto pointer-events-none opacity-0"
-                            />
-                        </>
+                        // 12.5). The video still plays when opened (Req 15.1).
+                        <div data-testid="poster-placeholder" className="w-full h-full bg-black/10" style={{ aspectRatio: FALLBACK_ASPECT_RATIO }} />
                     )}
                     <div data-testid="play-overlay" className="absolute inset-0 flex items-center justify-center">
                         <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center">

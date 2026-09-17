@@ -3,15 +3,17 @@
 // Interaction tests for MediaItem's video poster rendering (Component 7,
 // Requirement 12). These verify the three device-consistent behaviors the
 // design calls out for the video branch:
-//   - poster_url present  -> render <video poster preload="none">   (Req 12.2, 12.3)
-//   - poster_url null      -> render placeholder + play overlay      (Req 12.1)
-//   - poster fails/timeout -> fall back to the placeholder           (Req 12.5)
+//   - poster_url present  -> render the poster frame as an <img>      (Req 12.2, 12.3)
+//   - poster_url null      -> render placeholder + play overlay        (Req 12.1)
+//   - poster fails/timeout -> fall back to the placeholder             (Req 12.5)
 //
-// The video element stays mounted in every case so the video still plays when
-// opened (Req 15.1). We render the real component (no mocking of its logic);
-// only the browser DOM is provided by jsdom. next/image and the blurhash canvas
-// belong to the image branch and are never exercised here because `type` is a
-// video MIME string.
+// The poster is rendered as a real <img> (via next/image), NOT the <video>'s
+// `poster` attribute: a <video preload="none"> never fires `loadedData` in a
+// real browser (no video bytes are fetched), so the load/timeout guard could
+// never clear and the placeholder always won — hiding a poster that had painted.
+// An <img> fires onLoad/onError reliably. The <video> is loaded only when the
+// zoom viewer opens (Req 15.1). We render the real component (no mocking of its
+// logic); only the browser DOM is provided by jsdom.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -43,14 +45,18 @@ function renderVideo(poster_url: string | null) {
 }
 
 describe("MediaItem video poster rendering", () => {
-    it("renders <video> with poster and preload=none when poster_url is present (Req 12.2, 12.3)", () => {
+    it("renders the poster frame as an <img> when poster_url is present (Req 12.2, 12.3)", () => {
         renderVideo("https://blob.example/posters/1/poster.jpg");
 
-        const video = screen.getByTestId("poster-video") as HTMLVideoElement;
-        // Req 12.2: poster attribute set to the poster_url value.
-        expect(video.getAttribute("poster")).toBe("https://blob.example/posters/1/poster.jpg");
-        // Req 12.3: preload="none" so no video bytes are fetched to paint a preview.
-        expect(video.getAttribute("preload")).toBe("none");
+        const poster = screen.getByTestId("poster-video") as HTMLImageElement;
+        // Req 12.2: the poster frame is rendered as an <img> (fires onLoad/onError
+        // reliably, unlike a <video preload="none">). next/image rewrites the src
+        // through the optimizer, so assert the original URL is referenced rather
+        // than matching the exact optimized value.
+        expect(poster.tagName).toBe("IMG");
+        expect(decodeURIComponent(poster.getAttribute("src") ?? "")).toContain(
+            "https://blob.example/posters/1/poster.jpg",
+        );
         // Poster-ready state shows no placeholder, but the play overlay stays.
         expect(screen.queryByTestId("poster-placeholder")).toBeNull();
         expect(screen.getByTestId("play-overlay")).toBeTruthy();
@@ -63,22 +69,20 @@ describe("MediaItem video poster rendering", () => {
         expect(screen.getByTestId("poster-placeholder")).toBeTruthy();
         // Existing play-button overlay remains visible.
         expect(screen.getByTestId("play-overlay")).toBeTruthy();
-        // Req 15.1 / 12.4: the video element is still mounted (plays when opened),
-        // and it carries no poster attribute since none is ready.
-        const video = screen.getByTestId("poster-video") as HTMLVideoElement;
-        expect(video.getAttribute("preload")).toBe("none");
-        expect(video.getAttribute("poster")).toBeNull();
+        // Req 12.4: no poster <img> is rendered while none is ready; the actual
+        // <video> is loaded only when the zoom viewer opens (Req 15.1).
+        expect(screen.queryByTestId("poster-video")).toBeNull();
     });
 
     it("falls back to the placeholder when the poster fails to load (Req 12.5)", () => {
         renderVideo("https://blob.example/posters/1/poster.jpg");
 
-        // Initially the poster video is shown (no placeholder).
-        const video = screen.getByTestId("poster-video");
+        // Initially the poster image is shown (no placeholder).
+        const poster = screen.getByTestId("poster-video");
         expect(screen.queryByTestId("poster-placeholder")).toBeNull();
 
         // Simulate the poster image failing to load.
-        fireEvent.error(video);
+        fireEvent.error(poster);
 
         // Req 12.5: the placeholder is now shown so the slot has a visible element,
         // while the play overlay stays.
@@ -104,20 +108,20 @@ describe("MediaItem video poster rendering", () => {
         expect(screen.getByTestId("poster-placeholder")).toBeTruthy();
     });
 
-    it("does not fall back when the poster loads before the timeout (Req 12.5)", () => {
-        vi.useFakeTimers();
+    it("does not fall back when the poster loads before the timeout (Req 12.5)", async () => {
         renderVideo("https://blob.example/posters/1/poster.jpg");
 
-        const video = screen.getByTestId("poster-video");
-        // Poster paints successfully (onLoadedData) before the timeout.
-        fireEvent.loadedData(video);
-
-        // Advancing past the timeout must NOT trip the fallback because the guard
-        // was cleared on successful load.
-        act(() => {
-            vi.advanceTimersByTime(10000);
+        const poster = screen.getByTestId("poster-video");
+        // Poster paints successfully (the <img>'s onLoad) before the timeout.
+        // next/image invokes the user onLoad asynchronously (after img.decode()
+        // resolves), so we await an async act() to flush that microtask and the
+        // resulting React state update. Real timers here so the microtask runs.
+        await act(async () => {
+            fireEvent.load(poster);
         });
 
+        // The load cleared the guard and marked the poster loaded, so the effect
+        // no longer arms the timeout. The placeholder fallback must not appear.
         expect(screen.queryByTestId("poster-placeholder")).toBeNull();
         expect(screen.getByTestId("poster-video")).toBeTruthy();
     });
