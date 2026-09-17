@@ -12,14 +12,19 @@
 //     `object-cover`, so a slight aspect distortion is acceptable (the box is
 //     sized from the true aspect, cover only trims sub-pixel rounding).
 //
-//   - The 5th item becomes a FULL-WIDTH banner spanning the whole row, but ONLY
-//     when it is landscape (aspect >= FULL_WIDTH_MIN_ASPECT). A portrait/!square
-//     5th item would look wrong stretched across the full width, so it is demoted
-//     to a normal grid item and flows with the segment's grid rows instead.
+//   - The 5th slot is a FULL-WIDTH banner spanning the whole row. Because a
+//     portrait image looks wrong stretched full width, and media order within a
+//     section is allowed to be rearranged, the engine PICKS a landscape item
+//     (aspect >= FULL_WIDTH_MIN_ASPECT) from the segment to fill the banner slot
+//     rather than blindly using whatever item happens to be 5th. It prefers the
+//     item already at the 5th position when it qualifies (to minimize reordering)
+//     and otherwise pulls the most landscape item forward; the remaining four
+//     fill the grid rows above. If the segment has NO landscape candidate, the
+//     banner is skipped and all five items flow through justified grid rows.
 //
-//   - Trailing items (a final partial segment, or a segment whose 5th item was
-//     demoted) are packed into justified rows of up to ROWS_OF items, with the
-//     final row also scaled to fill the width so nothing is left ragged.
+//   - Trailing items (a final partial segment, or a segment with no landscape
+//     banner candidate) are packed into justified rows of up to ROWS_OF items,
+//     with the final row also scaled to fill the width so nothing is left ragged.
 //
 // The engine is pure and framework-agnostic so it can be unit tested without a
 // DOM: given the ordered item aspect ratios and a container width, it returns
@@ -143,17 +148,35 @@ export function computeLayout(items: LayoutInput[], options: LayoutOptions): Lay
     const isFullSegment = segment.length === segmentSize;
 
     if (isFullSegment) {
-      const gridItems = segment.slice(0, segmentSize - 1); // first 4
-      const last = segment[segmentSize - 1]; // 5th
-      const lastIsLandscape = aspectOf(last) >= fullWidthMinAspect;
-
-      if (lastIsLandscape) {
-        // 4 items in justified rows, then the 5th as a full-width banner.
-        emitJustifiedRows(gridItems);
-        emitFullWidth(last);
+      // Choose which item fills the full-width banner slot. The banner MUST be
+      // landscape, so pick a landscape item from the segment (reordering is
+      // allowed). Prefer the item already at the 5th position when it qualifies
+      // (keeps the natural order); otherwise pull the MOST landscape item
+      // (largest aspect) forward so the widest shot becomes the banner.
+      const lastIndex = segmentSize - 1;
+      let bannerIndex = -1;
+      if (aspectOf(segment[lastIndex]) >= fullWidthMinAspect) {
+        bannerIndex = lastIndex;
       } else {
-        // 5th demoted: flow all 5 through justified rows (2 + 2 + 1, last row
-        // scaled to fill width so it isn't ragged).
+        let bestAspect = fullWidthMinAspect;
+        for (let i = 0; i < segment.length; i++) {
+          const a = aspectOf(segment[i]);
+          if (a >= bestAspect) {
+            bestAspect = a;
+            bannerIndex = i;
+          }
+        }
+      }
+
+      if (bannerIndex >= 0) {
+        // The other four fill the justified grid rows above the banner, keeping
+        // their relative order.
+        const gridItems = segment.filter((_, i) => i !== bannerIndex);
+        emitJustifiedRows(gridItems);
+        emitFullWidth(segment[bannerIndex]);
+      } else {
+        // No landscape candidate in this segment: no banner. Flow all five
+        // through justified rows (2 + 2 + 1), each scaled to fill the width.
         emitJustifiedRows(segment);
       }
     } else {
