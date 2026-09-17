@@ -16,7 +16,7 @@ import { MdOutlineCheckCircleOutline } from "react-icons/md";
 // source of truth (and easy to tune) rather than a magic number inline.
 const POSTER_LOAD_TIMEOUT_MS = 8000;
 
-export default function MediaItem({index, src, type, poster_url, likes, liked, mediaID, section_id, sections, blurhash, username, onZoom}: {index: number, src: string, type: string | null, poster_url?: string | null, likes: number, liked: boolean, mediaID: number, section_id: number|null, sections: Section[], blurhash: string | null, username: string | null, onZoom: () => void}) {
+export default function MediaItem({index, src, type, poster_url, likes, liked, mediaID, section_id, sections, blurhash, username, onZoom, displayHeight, onAspectMeasured}: {index: number, src: string, type: string | null, poster_url?: string | null, likes: number, liked: boolean, mediaID: number, section_id: number|null, sections: Section[], blurhash: string | null, username: string | null, onZoom: () => void, displayHeight?: number, onAspectMeasured?: (aspect: number) => void}) {
     const [loaded, setLoaded] = useState(false);
     const [errored, setErrored] = useState(false);
     const [blurhashFailed, setBlurhashFailed] = useState(false);
@@ -74,8 +74,25 @@ export default function MediaItem({index, src, type, poster_url, likes, liked, m
     // real height so lazy loading can correctly defer off-screen media; once the
     // real media loads, h-auto restores its true aspect ratio.
     const FALLBACK_ASPECT_RATIO = "3 / 4";
-    const reserveSpace = !loaded && !errored;
-    const placeholderStyle = reserveSpace ? { aspectRatio: FALLBACK_ASPECT_RATIO } : undefined;
+    // When the segmented layout drives this cell it passes an explicit
+    // displayHeight (px). The cell then fills that fixed box with object-cover
+    // so justified rows keep a flush bottom edge regardless of the media's true
+    // aspect. Without a displayHeight we keep the legacy h-auto behavior and
+    // reserve a fallback aspect ratio until the media loads (lazy-load safe).
+    const layoutDriven = typeof displayHeight === "number" && displayHeight > 0;
+    const reserveSpace = !layoutDriven && !loaded && !errored;
+    const placeholderStyle = layoutDriven
+        ? { height: `${displayHeight}px` }
+        : reserveSpace
+            ? { aspectRatio: FALLBACK_ASPECT_RATIO }
+            : undefined;
+
+    // Report the media's true aspect ratio (w/h) to the parent so the layout
+    // engine can re-justify rows once real dimensions are known. Guards against
+    // reporting degenerate 0 dimensions.
+    const reportAspect = useCallback((w: number, h: number) => {
+        if (onAspectMeasured && w > 0 && h > 0) onAspectMeasured(w / h);
+    }, [onAspectMeasured]);
 
     const { isSelectionMode, selectedIds, toggleSelected } = useMediaUiStore();
 
@@ -91,7 +108,7 @@ export default function MediaItem({index, src, type, poster_url, likes, liked, m
     };
 
     return(
-        <article key={index} style={placeholderStyle} className='w-full h-auto relative overflow-hidden'>
+        <article key={index} style={placeholderStyle} className={`w-full relative overflow-hidden ${layoutDriven ? 'h-full' : 'h-auto'}`}>
 
             {selected && (
                 <div className="absolute inset-0 z-5 bg-white/30 pointer-events-none transition-opacity duration-200" />
@@ -104,7 +121,7 @@ export default function MediaItem({index, src, type, poster_url, likes, liked, m
             )}
 
             {isVideo ? (
-                <div className="relative cursor-pointer" style={hasPoster ? undefined : placeholderStyle} onClick={handleClick}>
+                <div className={`relative cursor-pointer ${layoutDriven ? 'h-full' : ''}`} style={hasPoster ? undefined : placeholderStyle} onClick={handleClick}>
                     {hasPoster ? (
                         // Poster ready: render the generated poster frame as a real
                         // <img> (via next/image), NOT the <video>'s `poster`
@@ -125,9 +142,13 @@ export default function MediaItem({index, src, type, poster_url, likes, liked, m
                             width={0}
                             height={0}
                             sizes="50vw"
-                            onLoad={handlePosterLoaded}
+                            onLoad={(e) => {
+                                const img = e.currentTarget as HTMLImageElement;
+                                reportAspect(img.naturalWidth, img.naturalHeight);
+                                handlePosterLoaded();
+                            }}
                             onError={handlePosterError}
-                            className="w-full h-auto pointer-events-none transition-all duration-200"
+                            className={`w-full pointer-events-none transition-all duration-200 ${layoutDriven ? 'absolute inset-0 h-full object-cover' : 'h-auto'}`}
                         />
                     ) : (
                         // No poster yet (poster_url is null) OR the poster failed /
@@ -135,7 +156,7 @@ export default function MediaItem({index, src, type, poster_url, likes, liked, m
                         // slot is a visible element and the gallery stays consistent
                         // without blocking on poster availability (Req 12.1, 12.4,
                         // 12.5). The video still plays when opened (Req 15.1).
-                        <div data-testid="poster-placeholder" className="w-full h-full bg-black/10" style={{ aspectRatio: FALLBACK_ASPECT_RATIO }} />
+                        <div data-testid="poster-placeholder" className="w-full h-full bg-black/10" style={layoutDriven ? undefined : { aspectRatio: FALLBACK_ASPECT_RATIO }} />
                     )}
                     <div data-testid="play-overlay" className="absolute inset-0 flex items-center justify-center">
                         <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center">
@@ -160,9 +181,13 @@ export default function MediaItem({index, src, type, poster_url, likes, liked, m
                         width={0}
                         height={0}
                         sizes="50vw"
-                        className={`w-full cursor-pointer transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'} ${reserveSpace ? 'absolute inset-0 h-full object-cover' : 'h-auto'}`}
-                        style={reserveSpace ? undefined : { width: '100%', height: 'auto' }}
-                        onLoad={() => setLoaded(true)}
+                        className={`w-full cursor-pointer transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'} ${layoutDriven ? 'absolute inset-0 h-full object-cover' : reserveSpace ? 'absolute inset-0 h-full object-cover' : 'h-auto'}`}
+                        style={layoutDriven ? undefined : reserveSpace ? undefined : { width: '100%', height: 'auto' }}
+                        onLoad={(e) => {
+                            const img = e.currentTarget as HTMLImageElement;
+                            reportAspect(img.naturalWidth, img.naturalHeight);
+                            setLoaded(true);
+                        }}
                         onError={() => setErrored(true)}
                         onTransitionEnd={() => { if (loaded) setFadeComplete(true); }}
                         onClick={handleClick}
