@@ -2,29 +2,15 @@
 
 import pool from '@/lib/db';
 import { NextRequest } from 'next/server';
-import jwt from 'jsonwebtoken';
+import { verifyRequest } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
-  const token = request.cookies.get("auth_token")?.value;
-
-  if (!token) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = verifyRequest(request);
+  if (!auth.ok) {
+    return auth.response;
   }
 
-  const jwtSecret = process.env.JWT_SECRET;
-
-  if (!jwtSecret) {
-    return Response.json({ error: "JWT_SECRET is not configured" }, { status: 500 });
-  }
-
-  let decoded: any;
-  try {
-    decoded = jwt.verify(token, jwtSecret) as any;
-  } catch {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  if (!decoded.isAdmin) {
+  if (!auth.user.isAdmin) {
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -44,15 +30,28 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const result = await pool.query(
-    `INSERT INTO events (event_name, event_slug)
-     VALUES ($1, $2)
-     RETURNING *`,
-    [name, name.toLowerCase().replace(/\s+/g, '-') + '-' + date]
-  );
+  try {
+    const result = await pool.query(
+      `INSERT INTO events (event_name, event_slug)
+       VALUES ($1, $2)
+       RETURNING *`,
+      [name, name.toLowerCase().replace(/\s+/g, '-') + '-' + date]
+    );
 
-  return new Response(JSON.stringify(result.rows[0].event_slug), {
-    status: 201,
-    headers: { 'Content-Type': 'application/json' },
-  });
+    return new Response(JSON.stringify(result.rows[0].event_slug), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error: unknown) {
+    // 23505 = unique_violation on events_event_slug_key: another event already
+    // has this name+date slug. Return a clear 409 instead of an unhandled 500.
+    if (typeof error === 'object' && error !== null && (error as { code?: string }).code === '23505') {
+      return Response.json(
+        { error: 'An event with this name and date already exists' },
+        { status: 409 },
+      );
+    }
+    console.error('POST /api/event failed:', error);
+    return Response.json({ error: 'Could not create event' }, { status: 500 });
+  }
 }

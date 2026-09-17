@@ -1,9 +1,9 @@
 //Modify/get data/delete data for a specific event
 
-import jwt from "jsonwebtoken";
 import pool from '@/lib/db';
 import { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
+import { verifyRequest } from '@/lib/auth';
 import { isDemoEvent, demoGuardResponse, isDemoUser } from '@/lib/demo-guard';
 import { UNCLASSIFIED_SECTION_ID, UNCLASSIFIED_SECTION_NAME } from '@/lib/sections';
 import { Section } from '@/app/dto/section';
@@ -35,14 +35,33 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
        WHERE event_slug = $3`,
       [name, name.toLowerCase().replace(/\s+/g, '-')+'-'+date, eventSlug]
     );
+
+    // No row matched the given slug -> the event does not exist.
+    if (result.rowCount === 0) {
+      return new Response('Event not found', {
+        status: 404,
+        headers: { 'Content-Type': 'text/plain' }
+      });
+    }
+
     return new Response('OK', {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
-  } catch (error) {
-    return new Response('Event not found', {
-      status: 404,
-      headers: { 'Content-Type': 'application/json' }
+  } catch (error: unknown) {
+    // 23505 = unique_violation: the new name+date slug collides with another
+    // existing event. Distinguish this from "not found" (the old code returned
+    // 404 for ANY error, masking the real cause).
+    if (typeof error === 'object' && error !== null && (error as { code?: string }).code === '23505') {
+      return new Response('An event with this name and date already exists', {
+        status: 409,
+        headers: { 'Content-Type': 'text/plain' }
+      });
+    }
+    console.error('PUT /api/event/[event-slug] failed:', error);
+    return new Response('Could not update event', {
+      status: 500,
+      headers: { 'Content-Type': 'text/plain' }
     });
   }
   
@@ -51,34 +70,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ "event-slug": string }> }) {
   const { "event-slug": eventSlug } = await params;
  
-  const token = request.cookies.get("auth_token")?.value;
-
-  if (!token) {
-    return new Response("Unauthorized", {
-      status: 401,
-    });
-  } 
-
-  const jwtSecret = process.env.JWT_SECRET;
-
-if (!jwtSecret) {
-    return new Response("JWT_SECRET is not configured", {
-        status: 500,
-    });
-}
-
-  const decoded = jwt.verify(
-    token,
-    jwtSecret
-  ) as any;
-
-  const userId = decoded.userId;
-
-  if (!userId) {
-    return new Response("Unauthorized", {
-      status: 401,
-    });
+  const auth = verifyRequest(request);
+  if (!auth.ok) {
+    return auth.response;
   }
+  const decoded = auth.user;
+  const userId = decoded.userId;
 
   // Demo user can only access the demo event
   if (isDemoUser(decoded.email) && !isDemoEvent(eventSlug)) {

@@ -1,8 +1,8 @@
 //Download selected media
 
 import { NextRequest } from "next/server";
-import jwt from "jsonwebtoken";
 import pool from "@/lib/db";
+import { verifyRequest } from "@/lib/auth";
 import { ZipArchive } from "archiver";
 
 // Maximum number of media files that can be downloaded in a single request.
@@ -11,40 +11,12 @@ const MAX_DOWNLOAD_MEDIA = 20;
 export async function POST(request: NextRequest, { params }: { params: Promise<{ "event-slug": string }> }) {
 
     const { "event-slug": eventSlug } = await params;
- 
-    const token = request.cookies.get("auth_token")?.value;
 
-    if (!token) {
-        return new Response("Unauthorized", {
-        status: 401,
-        });
-    } 
-
-    const jwtSecret = process.env.JWT_SECRET;
-
-    if (!jwtSecret) {
-        return new Response("JWT_SECRET is not configured", {
-            status: 500,
-        });
+    const auth = verifyRequest(request);
+    if (!auth.ok) {
+        return auth.response;
     }
-
-    let decoded: any;
-
-    try {
-        decoded = jwt.verify(token, jwtSecret) as any;
-    } catch {
-        return new Response("Unauthorized", {
-            status: 401,
-        });
-    }
-
-    const userId = decoded.userId;
-
-    if (!userId) {
-        return new Response("Unauthorized", {
-        status: 401,
-        });
-    }
+    const { isAdmin } = auth.user;
 
     try{
         const body = await request.json();
@@ -58,7 +30,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         }
 
         // Admins can download any number at once; non-admins are capped.
-        if (!decoded.isAdmin && mediaIds.length > MAX_DOWNLOAD_MEDIA) {
+        if (!isAdmin && mediaIds.length > MAX_DOWNLOAD_MEDIA) {
             return new Response(
                 `You can download at most ${MAX_DOWNLOAD_MEDIA} media files at once`,
                 { status: 400 }

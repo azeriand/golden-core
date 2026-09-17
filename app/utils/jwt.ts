@@ -15,7 +15,7 @@ export default async function generateJWT(user: { user_id: number, user_email: s
             isAdmin: user.is_admin
         },
         jwtSecret,
-        { expiresIn: '3d' }
+        { expiresIn: '3d', algorithm: 'HS256' }
     );
 
     return token;

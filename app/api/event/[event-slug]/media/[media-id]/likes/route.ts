@@ -1,8 +1,7 @@
 // Like or delete a like for a media file
 
 import { NextRequest } from 'next/server';
-import { cookies } from 'next/headers'
-import jwt from "jsonwebtoken";
+import { verifyRequest } from '@/lib/auth';
 import pool from '@/lib/db';
 
 export async function POST(
@@ -19,33 +18,11 @@ export async function POST(
         "media-id": mediaId,
     } = await params;
 
-    const token = request.cookies.get("auth_token")?.value;
-
-    if (!token) {
-        return new Response("Unauthorized", {
-            status: 401,
-        });
+    const auth = verifyRequest(request);
+    if (!auth.ok) {
+        return auth.response;
     }
-
-    const jwtSecret = process.env.JWT_SECRET;
-
-    if (!jwtSecret) {
-        return new Response("JWT_SECRET is not configured", {
-            status: 500,
-        });
-    }
-    const decoded = jwt.verify(
-        token,
-        jwtSecret
-    ) as any;
-
-    const userId = decoded.userId;
-
-    if (!userId) {
-        return new Response("Unauthorized", {
-            status: 401,
-        });
-    }
+    const userId = auth.user.userId;
 
     const result = await pool.query(
         `SELECT media.media_id

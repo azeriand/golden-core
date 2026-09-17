@@ -60,7 +60,7 @@ export function verifyRequest(request: NextRequest):
 
     let decoded: JWTPayload;
     try {
-        decoded = jwt.verify(token, jwtSecret) as JWTPayload;
+        decoded = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] }) as JWTPayload;
     } catch {
         return { ok: false, response: new Response('Unauthorized', { status: 401 }) };
     }
