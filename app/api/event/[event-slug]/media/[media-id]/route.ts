@@ -2,6 +2,7 @@
 
 import pool from '@/lib/db';
 import { NextRequest } from 'next/server';
+import { verifyRequest } from '@/lib/auth';
 import { isDemoEvent, demoGuardResponse } from '@/lib/demo-guard';
 import { isUnclassifiedSectionId } from '@/lib/sections';
 
@@ -11,6 +12,14 @@ export async function PATCH(
 ) {
     const { "event-slug": eventSlug, "media-id": mediaId } = await params;
     if (isDemoEvent(eventSlug)) return demoGuardResponse();
+
+    // Require a valid session before mutating any media row. Returns 401 on a
+    // missing/invalid/expired token and 500 if JWT_SECRET is unset (lib/auth.ts).
+    const auth = verifyRequest(request);
+    if (!auth.ok) {
+        return auth.response;
+    }
+    const { userId, isAdmin } = auth.user;
 
     const { section_id } = await request.json();
 
@@ -24,20 +33,41 @@ export async function PATCH(
     // (section_id = NULL) rather than pointing at a real section row.
     const targetSectionId: number | null = isUnclassifiedSectionId(section_id) ? null : section_id;
 
-    const result = await pool.query(
-        `
-        UPDATE media
-        SET section_id = $1
-        WHERE media_id = $2
-            AND event_id = (
-              SELECT event_id
-              FROM events
-              WHERE event_slug = $3
-            )
-        RETURNING *
-        `,
-        [targetSectionId, mediaId, eventSlug]
-    );
+    // Authorization: a regular user may only move their OWN media; admins may
+    // move any media in the event. The event-scoping subquery is kept so a
+    // media row is only touched when it truly belongs to this event's slug.
+    // The 404 below then covers both "does not exist / wrong event" and
+    // "belongs to another user" (no ownership leak).
+    const result = isAdmin
+        ? await pool.query(
+            `
+            UPDATE media
+            SET section_id = $1
+            WHERE media_id = $2
+                AND event_id = (
+                  SELECT event_id
+                  FROM events
+                  WHERE event_slug = $3
+                )
+            RETURNING *
+            `,
+            [targetSectionId, mediaId, eventSlug]
+        )
+        : await pool.query(
+            `
+            UPDATE media
+            SET section_id = $1
+            WHERE media_id = $2
+                AND user_id = $4
+                AND event_id = (
+                  SELECT event_id
+                  FROM events
+                  WHERE event_slug = $3
+                )
+            RETURNING *
+            `,
+            [targetSectionId, mediaId, eventSlug, userId]
+        );
 
     if (result.rows.length === 0) {
         return new Response("Media not found", {

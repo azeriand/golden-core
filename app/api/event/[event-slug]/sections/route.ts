@@ -2,11 +2,19 @@
 import pool from '@/lib/db';
 import { SectionRequest } from '@/app/dto/section';
 import { NextRequest } from 'next/server';
+import { verifyRequest } from '@/lib/auth';
 import { isDemoEvent, demoGuardResponse } from '@/lib/demo-guard';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ "event-slug": string }> }) {
   const { "event-slug": eventSlug } = await params;
   if (isDemoEvent(eventSlug)) return demoGuardResponse();
+
+  // Require a valid session (any authenticated user).
+  const auth = verifyRequest(request);
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   const { sections }: { sections: SectionRequest[] } = await request.json();
 
   //iterar sections para meter for cada una en la base de datos
@@ -16,9 +24,19 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         headers: { 'Content-Type': 'text/plain' }
     })
   }
-  console.log('EVENT SLUG', eventSlug)
+
   const eventResult = await pool.query(`SELECT event_id FROM events WHERE event_slug = $1`, [eventSlug]);
 
+  // Guard against a missing event: without this, eventResult.rows[0] is
+  // undefined and the loop below throws an unhandled error.
+  if (eventResult.rows.length === 0) {
+    return new Response('Event not found', {
+      status: 404,
+      headers: { 'Content-Type': 'text/plain' }
+    });
+  }
+
+  const eventId = eventResult.rows[0].event_id;
 
   const promises = [];
 
@@ -27,13 +45,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     `INSERT INTO sections (section_name, start_date, finish_date, event_id)
     VALUES ($1, $2, $3, $4)
     RETURNING *`,
-    [section_name, start_date, finish_date, eventResult.rows[0].event_id]
+    [section_name, start_date, finish_date, eventId]
     ));
   }
 
   const results = await Promise.allSettled(promises);
-
-  console.log('PROMISES', promises)
 
   return new Response(JSON.stringify(results), {
     status: 201,

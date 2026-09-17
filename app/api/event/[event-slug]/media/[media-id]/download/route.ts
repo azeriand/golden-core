@@ -1,6 +1,6 @@
 import pool from '@/lib/db';
 import { NextRequest } from 'next/server';
-import jwt from 'jsonwebtoken';
+import { verifyRequest } from '@/lib/auth';
 
 export async function GET( request: NextRequest, { params }: { params: Promise<{"event-slug": string; "media-id": string;}> }) {
     
@@ -9,38 +9,9 @@ export async function GET( request: NextRequest, { params }: { params: Promise<{
         "media-id": mediaId
     } = await params;
 
-    const token = request.cookies.get("auth_token")?.value;
-
-    if (!token) {
-        return new Response("Unauthorized", {
-            status: 401,
-        });
-    }
-
-    const jwtSecret = process.env.JWT_SECRET;
-
-    if (!jwtSecret) {
-        return new Response("JWT_SECRET is not configured", {
-            status: 500,
-        });
-    }
-
-    let decoded: any;
-
-    try {
-        decoded = jwt.verify(token, jwtSecret);
-    } catch {
-        return new Response("Unauthorized", {
-            status: 401,
-        });
-    }
-
-    const userId = decoded.userId;
-
-    if (!userId) {
-        return new Response("Unauthorized", {
-            status: 401,
-        });
+    const auth = verifyRequest(request);
+    if (!auth.ok) {
+        return auth.response;
     }
 
     const mediaResult = await pool.query(

@@ -2,11 +2,18 @@
 
 import pool from '@/lib/db';
 import { NextRequest } from 'next/server';
+import { verifyRequest } from '@/lib/auth';
 import { isDemoEvent, demoGuardResponse } from '@/lib/demo-guard';
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ "event-slug": string } & { "section-id": string }> }) {
   const { "event-slug": eventSlug, "section-id": sectionId } = await params;
   if (isDemoEvent(eventSlug)) return demoGuardResponse();
+
+  const auth = verifyRequest(request);
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   const { name, startDate, finishDate, sectionOrder } = await request.json();
 
   if (!name) {
@@ -48,9 +55,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   
 }
 
-export async function DELETE(_: any, { params }: { params: Promise<{ "event-slug": string } & { "section-id": string }> }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ "event-slug": string } & { "section-id": string }> }) {
   const { "event-slug": eventSlug, "section-id": sectionId } = await params;
   if (isDemoEvent(eventSlug)) return demoGuardResponse();
+
+  const auth = verifyRequest(request);
+  if (!auth.ok) {
+    return auth.response;
+  }
 
   try {
     // Detach any media in this section first so the delete does not violate the

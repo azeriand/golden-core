@@ -2,7 +2,7 @@
 
 import pool from '@/lib/db';
 import { NextRequest } from 'next/server';
-import jwt from 'jsonwebtoken';
+import { verifyRequest } from '@/lib/auth';
 import { del } from '@vercel/blob';
 import { isDemoEvent, demoGuardResponse } from '@/lib/demo-guard';
 import { isUnclassifiedSectionId } from '@/lib/sections';
@@ -20,28 +20,12 @@ export async function DELETE(
     const { "event-slug": eventSlug } = await params;
     if (isDemoEvent(eventSlug)) return demoGuardResponse();
 
-    const token = request.cookies.get("auth_token")?.value;
-
-    if (!token) {
-        return new Response("Unauthorized", { status: 401 });
+    const auth = verifyRequest(request);
+    if (!auth.ok) {
+        return auth.response;
     }
-
-    const jwtSecret = process.env.JWT_SECRET;
-
-    if (!jwtSecret) {
-        return new Response("JWT_SECRET is not configured", { status: 500 });
-    }
-
-    let decoded: any;
-
-    try {
-        decoded = jwt.verify(token, jwtSecret) as any;
-    } catch {
-        return new Response("Unauthorized", { status: 401 });
-    }
-
-    const userId = decoded.userId;
-    const isAdmin = decoded.isAdmin;
+    const userId = auth.user.userId;
+    const isAdmin = auth.user.isAdmin;
 
     const body = await request.json();
     const mediaIds = body.mediaIds;
@@ -102,14 +86,28 @@ export async function DELETE(
         [foundIds]
     );
 
-    // Delete blobs from Vercel Blob storage (best effort)
+    // Delete blobs from Vercel Blob storage (best effort). The DB rows are
+    // already gone, so if this fails the blobs become ORPHANS (billable storage
+    // with no DB reference). We deliberately don't fail the request, but we log
+    // the exact orphaned URLs in a greppable, structured line so they can be
+    // reconciled/cleaned up later (P2-3). Marker "ORPHANED_BLOBS" makes them easy
+    // to find in logs; a future cleanup job can re-run `del` on these URLs.
     try {
         if (blobUrls.length > 0) {
             await del(blobUrls);
         }
     } catch (error) {
-        console.error("Error deleting blobs:", error);
-        // Don't fail the request if blob deletion fails
+        console.error(
+            "ORPHANED_BLOBS bulk-delete failed to remove blobs from storage",
+            {
+                eventSlug,
+                mediaIds: foundIds,
+                blobUrls,
+                message: error instanceof Error ? error.message : String(error),
+            },
+        );
+        // Don't fail the request if blob deletion fails — the media rows are
+        // already deleted; leaving the orphans logged is better than a 500.
     }
 
     return new Response(JSON.stringify({ deleted: foundIds.length }), {
@@ -131,28 +129,12 @@ export async function PATCH(
     const { "event-slug": eventSlug } = await params;
     if (isDemoEvent(eventSlug)) return demoGuardResponse();
 
-    const token = request.cookies.get("auth_token")?.value;
-
-    if (!token) {
-        return new Response("Unauthorized", { status: 401 });
+    const auth = verifyRequest(request);
+    if (!auth.ok) {
+        return auth.response;
     }
-
-    const jwtSecret = process.env.JWT_SECRET;
-
-    if (!jwtSecret) {
-        return new Response("JWT_SECRET is not configured", { status: 500 });
-    }
-
-    let decoded: any;
-
-    try {
-        decoded = jwt.verify(token, jwtSecret) as any;
-    } catch {
-        return new Response("Unauthorized", { status: 401 });
-    }
-
-    const userId = decoded.userId;
-    const isAdmin = decoded.isAdmin;
+    const userId = auth.user.userId;
+    const isAdmin = auth.user.isAdmin;
 
     const body = await request.json();
     const { mediaIds, sectionId } = body;

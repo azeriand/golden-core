@@ -2,8 +2,7 @@
 
 import pool from '@/lib/db';
 import { NextRequest } from 'next/server';
-import jwt from 'jsonwebtoken';
-import { cookies } from 'next/headers';
+import { verifyRequest } from '@/lib/auth';
 import { put } from "@vercel/blob";
 import { generateBlurhash } from '@/lib/blurhash';
 import { extractCreationTime } from '@/lib/media-metadata';
@@ -47,8 +46,6 @@ function validateImageMagicBytes(header: Uint8Array): boolean {
 export async function POST(request: NextRequest, { params }: { params: Promise<{ "event-slug": string }> }) {
     const { "event-slug": eventSlug } = await params;
     if (isDemoEvent(eventSlug)) return demoGuardResponse();
-    const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token')?.value;
 
     // Parse form data
     let formData: FormData;
@@ -69,24 +66,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         return new Response("Date missing", { status: 400 });
     }
 
-    if (!token) {
-        return new Response("Unauthorized", { status: 401 });
+    // Authenticate (centralized in lib/auth.ts — same 401/500 behavior).
+    const auth = verifyRequest(request);
+    if (!auth.ok) {
+        return auth.response;
     }
-
-    // Authenticate
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-        return new Response("JWT_SECRET is not configured", { status: 500 });
-    }
-
-    let decoded: any;
-    try {
-        decoded = jwt.verify(token, jwtSecret) as any;
-    } catch {
-        return new Response("Unauthorized", { status: 401 });
-    }
-
-    const userId = decoded.userId;
+    const userId = auth.user.userId;
 
     // Determine file type
     const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
