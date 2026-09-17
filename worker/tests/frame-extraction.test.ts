@@ -15,11 +15,21 @@
 // FrameExtractionError (the same error class the pipeline treats as a failure).
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, statSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import sharp from 'sharp';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   extractPosterFrame,
   FrameExtractionError,
@@ -45,6 +55,15 @@ function ffmpegAvailable(): boolean {
 }
 
 const HAS_FFMPEG = ffmpegAvailable();
+
+// Temp dirs holding ffmpeg stubs created by the argument-ordering test; removed
+// after the suite so no scratch files leak.
+const stubDirs: string[] = [];
+afterAll(() => {
+  for (const dir of stubDirs) {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 // A `file://` URL for the fixture. ffmpeg accepts local paths and file:// URLs
 // as input; the extractor passes contentUrl straight to `-i`.
@@ -184,6 +203,46 @@ describe('extractPosterFrame', () => {
     await expect(
       extractPosterFrame({ contentUrl: undecodable, maxDimension: MAX_DIMENSION }),
     ).rejects.toBeInstanceOf(FrameExtractionError);
+  });
+
+  // Argument-ordering regression test (the .mov "no poster" fix). QuickTime /
+  // iPhone recordings often store the `moov` atom at the tail of the file (no
+  // faststart). With input seeking (`-ss` BEFORE `-i`) read over HTTP, ffmpeg
+  // seeks before parsing that trailing index and exits non-zero, leaving those
+  // videos with no poster. The fix is OUTPUT seeking (`-ss` AFTER `-i`). We pin
+  // that ordering here without needing a real tail-moov file or ffmpeg by
+  // pointing `ffmpegPath` at a stub that records the argv it was invoked with.
+  it('invokes ffmpeg with output seeking (-ss after -i) so tail-moov .mov files decode', async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'ffmpeg-args-'));
+    const argsFile = path.join(dir, 'argv.txt');
+    const stub = path.join(dir, 'ffmpeg-stub.sh');
+    // The stub writes each received argument on its own line, then exits 0 with
+    // a byte on stdout so extraction proceeds far enough to have captured argv.
+    // (sharp will reject the single byte later; we only assert on argv here.)
+    writeFileSync(
+      stub,
+      `#!/bin/sh\n: > "${argsFile}"\nfor a in "$@"; do printf '%s\\n' "$a" >> "${argsFile}"; done\nprintf 'x'\n`,
+      'utf8',
+    );
+    chmodSync(stub, 0o755);
+    stubDirs.push(dir);
+
+    // Extraction runs the stub for the early seek; sharp then fails on the stub's
+    // 1-byte "frame", surfacing FrameExtractionError. We don't care about the
+    // outcome — only the argv the stub recorded.
+    await extractPosterFrame({
+      contentUrl: 'https://blob.example/tail-moov.mov',
+      maxDimension: MAX_DIMENSION,
+      ffmpegPath: stub,
+    }).catch(() => undefined);
+
+    const argv = readFileSync(argsFile, 'utf8').split('\n').filter(Boolean);
+    const iIndex = argv.indexOf('-i');
+    const ssIndex = argv.indexOf('-ss');
+    expect(iIndex).toBeGreaterThanOrEqual(0);
+    expect(ssIndex).toBeGreaterThanOrEqual(0);
+    // The crux of the fix: the seek must come AFTER the input.
+    expect(ssIndex).toBeGreaterThan(iIndex);
   });
 
   it('reports whether ffmpeg was available for the live assertions', () => {

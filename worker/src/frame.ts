@@ -77,9 +77,23 @@ export interface ExtractFrameOptions {
  * Run ffmpeg once, seeking `seek`, and return the raw single-frame bytes it
  * writes to stdout. Rejects with a FrameExtractionError when ffmpeg exits
  * non-zero (cannot retrieve the content or cannot decode a frame) or emits no
- * bytes. `-ss` is placed BEFORE `-i` so ffmpeg uses fast input seeking and
- * stops reading once the target frame is decoded, avoiding a full download for
- * well-formed files.
+ * bytes.
+ *
+ * SEEK ORDERING (the .mov "no poster" fix): `-ss` is placed AFTER `-i` (output
+ * seeking), NOT before it (input seeking). Fast input seeking assumes ffmpeg can
+ * position the demuxer before fully parsing the container, which breaks for
+ * QuickTime/iPhone recordings whose `moov` atom (the index ffmpeg needs to
+ * decode) sits at the TAIL of the file rather than the front (no faststart).
+ * Read over HTTP, an input `-ss` on such a file lands on an undecodable point
+ * and ffmpeg exits non-zero — which is exactly what stranded these videos with
+ * no poster. Output seeking opens `-i` first, so ffmpeg reads the container
+ * (fetching the trailing `moov` via HTTP range requests — the Blob store sends
+ * `accept-ranges: bytes`) and then discards frames up to `seek`. It reads more
+ * bytes for a mid-clip seek, but it is correct for both faststart and
+ * tail-moov files; since we only decode one early frame the extra cost is small.
+ *
+ * `-reconnect*` make the HTTP input resilient to transient drops/redirects on
+ * the remote Blob so a flaky fetch retries in-process instead of failing the job.
  */
 function runFfmpegSeek(
   seek: string,
@@ -96,8 +110,14 @@ function runFfmpegSeek(
   const args = [
     '-hide_banner',
     '-loglevel', 'error',
-    '-ss', seek,
+    // Resilient HTTP input for remote Blob reads (ignored for file:// inputs).
+    '-reconnect', '1',
+    '-reconnect_streamed', '1',
+    '-reconnect_on_network_error', '1',
     '-i', options.contentUrl,
+    // Output seeking: AFTER -i so the container (incl. a tail moov) is parsed
+    // before the seek. See the doc comment above for why this fixes .mov posters.
+    '-ss', seek,
     '-frames:v', '1',
     '-vf', scaleFilter,
     '-f', 'image2pipe',
