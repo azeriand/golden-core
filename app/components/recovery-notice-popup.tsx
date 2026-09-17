@@ -36,7 +36,7 @@ export default function RecoveryNoticePopup() {
           className="flex flex-col gap-y-4 items-center max-w-sm text-center"
           style={{ boxShadow: "0 20px 40px rgba(0, 0, 0, 0.35)", padding: "2.5rem" }}
         >
-          <h2 className="text-purple-700 font-semibold text-lg">
+          <h2 className="text-pink-700 font-semibold text-lg">
             Subidas interrumpidas
           </h2>
           <p className="text-sm text-gray-600">
@@ -45,11 +45,11 @@ export default function RecoveryNoticePopup() {
           </p>
           <Button
             appearance="mate"
-            color="purple"
+            color="pink"
             intensity={200}
             size="sm"
-            className="rounded-xl! border-purple-200!"
-            style={{ color: "#9D7BD6" }}
+            className="rounded-xl! border-pink-200!"
+            style={{ color: "#E83E8C" }}
             onClick={dismiss}
           >
             Entendido

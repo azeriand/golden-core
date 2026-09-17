@@ -4,15 +4,14 @@ import { IoCloseOutline } from "react-icons/io5";
 import { MdOutlineRadioButtonUnchecked, MdOutlineCheckCircleOutline } from "react-icons/md";
 import { FiLogOut } from "react-icons/fi";
 import { FaShare } from "react-icons/fa";
-import { Great_Vibes } from 'next/font/google'
+import { Cormorant_Garamond } from 'next/font/google'
 import useMediaUiStore from "../src/stores/media-ui.store";
 import useAuthStore from "../src/stores/auth.store";
 import useEventStore from "../src/stores/event.store";
 import { useEffect, useRef, useState } from "react";
 
-const greatVibes = Great_Vibes({
+const cormorantGaramond = Cormorant_Garamond({
   subsets: ['latin'],
-  weight: '400',
 })
 
 const DEFAULT_COVER_IMAGE = "https://img.magnific.com/free-photo/golden-wedding-rings-white-rose-from-wedding-bouquet_8353-10467.jpg?semt=ais_hybrid&w=740&q=80";
@@ -68,19 +67,19 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds,
             {/* Container estático con título, fecha y botón de seleccionar */}
             <div className="bg-[#FFFCF8]/95 backdrop-blur-md w-full px-6 py-3">
                 <div className="flex flex-col items-center gap-y-1">
-                    <h1 className={`text-2xl font-semibold ${greatVibes.className} text-purple-700`}>{event_name}</h1>
-                    <p className={`text-2xl font-bold ${greatVibes.className} text-purple-500`}>{event_date}</p>
-                    <hr className='w-full border-t border-stone-300 mt-2' />
+                    <h1 className={`text-2xl font-semibold ${cormorantGaramond.className} text-pink-700`}>{event_name}</h1>
+                    <p className={`text-2xl font-bold ${cormorantGaramond.className} text-pink-500`}>{event_date}</p>
+                    <hr className='w-full border-t border-stone-300 mt-4!' />
                     <div className="flex w-full justify-end mt-4 -mb-3 gap-x-2">
-                        <Button appearance='mate' color="purple" intensity={200} size='sm' className="!rounded-full border-purple-200!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9D7BD6' }} onClick={shareEvent}>
+                        <Button appearance='mate' color="pink" intensity={200} size='sm' className="!rounded-full border-pink-200!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#E83E8C' }} onClick={shareEvent}>
                             <FaShare size={16} />
                         </Button>
                         {!isSelectionMode && (
                             <>
-                                <Button appearance='mate' color="purple" intensity={200} size='sm' className="py-2! text-xs! rounded-xl! border-purple-200!" style={{ color: '#9D7BD6' }} onClick={toggleSelectedMode}>
+                                <Button appearance='mate' color="pink" intensity={200} size='sm' className="py-2! text-xs! rounded-xl! border-pink-200!" style={{ color: '#E83E8C' }} onClick={toggleSelectedMode}>
                                     Seleccionar
                                 </Button>
-                                <Button appearance='mate' color="purple" intensity={200} size='sm' className="!rounded-full border-purple-200!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9D7BD6' }} onClick={() => setShowLogoutConfirm(true)}>
+                                <Button appearance='mate' color="pink" intensity={200} size='sm' className="!rounded-full border-pink-200!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#E83E8C' }} onClick={() => setShowLogoutConfirm(true)}>
                                     <FiLogOut size={16} />
                                 </Button>
                             </>
@@ -88,11 +87,11 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds,
                         {isSelectionMode && (
                             <>
                                 {isAdmin && (
-                                    <Button appearance='mate' color="purple" intensity={200} size='sm' className="!rounded-full border-purple-200!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9D7BD6' }} onClick={handleSelectAllToggle}>
+                                    <Button appearance='mate' color="pink" intensity={200} size='sm' className="!rounded-full border-pink-200!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#E83E8C' }} onClick={handleSelectAllToggle}>
                                         {allSelected ? <MdOutlineCheckCircleOutline size={18} /> : <MdOutlineRadioButtonUnchecked size={18} />}
                                     </Button>
                                 )}
-                                <Button appearance='mate' color="purple" intensity={200} size='sm' className="!rounded-full border-purple-200!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9D7BD6' }} onClick={toggleSelectedMode}>
+                                <Button appearance='mate' color="pink" intensity={200} size='sm' className="!rounded-full border-pink-200!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#E83E8C' }} onClick={toggleSelectedMode}>
                                     <IoCloseOutline size={18} />
                                 </Button>
                             </>
@@ -162,7 +161,7 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds,
                             className="flex flex-col gap-y-4 items-center max-w-sm text-center"
                             style={{ boxShadow: "0 20px 40px rgba(0, 0, 0, 0.35)", padding: "2.5rem" }}
                         >
-                            <h2 className="text-purple-700 font-semibold text-lg">
+                            <h2 className="text-pink-700 font-semibold text-lg">
                                 Cerrar sesión
                             </h2>
                             <p className="text-sm text-gray-600">
@@ -171,22 +170,22 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds,
                             <div className="flex gap-x-3">
                                 <Button
                                     appearance="mate"
-                                    color="purple"
+                                    color="pink"
                                     intensity={200}
                                     size="sm"
-                                    className="rounded-xl! border-purple-200!"
-                                    style={{ color: "#9D7BD6" }}
+                                    className="rounded-xl! border-pink-200!"
+                                    style={{ color: "#E83E8C" }}
                                     onClick={() => setShowLogoutConfirm(false)}
                                 >
                                     Cancelar
                                 </Button>
                                 <Button
                                     appearance="mate"
-                                    color="purple"
+                                    color="pink"
                                     intensity={200}
                                     size="sm"
-                                    className="rounded-xl! border-purple-200!"
-                                    style={{ color: "#9D7BD6" }}
+                                    className="rounded-xl! border-pink-200!"
+                                    style={{ color: "#E83E8C" }}
                                     onClick={() => { setShowLogoutConfirm(false); logout(); }}
                                 >
                                     Salir

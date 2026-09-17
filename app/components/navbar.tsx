@@ -170,7 +170,7 @@ export default function Navbar() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    const defaultButtonProps = {appearance: 'ghost', intensity: 700, style: { color: '#9D7BD6' }};
+    const defaultButtonProps = {appearance: 'ghost', intensity: 700, style: { color: '#E83E8C' }};
     const selectedButtonProps = {intensity: 950};
 
     const homeButtonProps = state === "home" ? selectedButtonProps : defaultButtonProps;
@@ -206,13 +206,13 @@ export default function Navbar() {
                         <p className="text-center text-sm font-medium" style={{ color: '#5A463A' }}>Mover a sección</p>
                         <div className="flex flex-col gap-y-2 max-h-60 overflow-y-auto">
                             {event?.sections.map((section) => (
-                                <label key={section.section_id} className="flex items-center gap-x-3 p-2 rounded-xl cursor-pointer hover:bg-purple-50 transition-colors">
+                                <label key={section.section_id} className="flex items-center gap-x-3 p-2 rounded-xl cursor-pointer hover:bg-pink-50 transition-colors">
                                     <input
                                         type="radio"
                                         name="move-section"
                                         checked={selectedSectionId === section.section_id}
                                         onChange={() => setSelectedSectionId(section.section_id)}
-                                        className="w-4 h-4 accent-purple-500"
+                                        className="w-4 h-4 accent-pink-500"
                                     />
                                     <span className="text-sm" style={{ color: '#5A463A' }}>{section.section_name}</span>
                                 </label>
@@ -223,7 +223,7 @@ export default function Navbar() {
                                 Cancelar
                             </button>
                             <button
-                                className={`flex-1 py-2 rounded-xl text-sm font-medium text-white ${selectedSectionId ? 'bg-purple-500' : 'bg-purple-300 cursor-not-allowed'}`}
+                                className={`flex-1 py-2 rounded-xl text-sm font-medium text-white ${selectedSectionId ? 'bg-pink-500' : 'bg-pink-300 cursor-not-allowed'}`}
                                 onClick={confirmMove}
                             >
                                 Mover
@@ -249,10 +249,10 @@ export default function Navbar() {
                     <div className="flex gap-x-2 justify-start">
                         {canMoveAndDelete && (
                             <>
-                                <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white! md:text-purple-700! md:border-purple-200! md:bg-purple-50!" style={{ width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleMove}>
+                                <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white! md:text-pink-700! md:border-pink-200! md:bg-pink-50!" style={{ width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleMove}>
                                     <LuMoveVertical size={18} />
                                 </Button>
-                                <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white! md:text-purple-700! md:border-purple-200! md:bg-purple-50!" style={{ width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleDelete}>
+                                <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white! md:text-pink-700! md:border-pink-200! md:bg-pink-50!" style={{ width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleDelete}>
                                     <FiTrash2 size={18} />
                                 </Button>
                             </>
@@ -260,14 +260,14 @@ export default function Navbar() {
                     </div>
 
                     {/* Centro: contador */}
-                    <span className="text-sm font-black text-white/80 md:text-purple-700 text-center">
+                    <span className="text-sm font-black text-white/80 md:text-pink-700 text-center">
                         {selectedIds.size} seleccionados
                     </span>
 
                     {/* Derecha: descargar */}
                     <div className="flex justify-end">
                         <button
-                            className="relative !rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-white md:text-purple-700 md:border-purple-200 md:bg-purple-50 flex items-center justify-center"
+                            className="relative !rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-white md:text-pink-700 md:border-pink-200 md:bg-pink-50 flex items-center justify-center"
                             style={{ width: '40px', height: '40px' }}
                             onClick={() => { if (!downloading && selectedIds.size > 0) downloadSelected(); }}
                         >
@@ -290,11 +290,11 @@ export default function Navbar() {
                 /* Barra normal */
                 <div className="flex justify-between px-6 items-center gap-x-3 fixed bottom-4 left-0 right-0 w-full z-[100]" style={{ willChange: "transform" }}>
                     <Card noPadding className="flex rounded-full p-1">
-                        <Button appearance='mate' color="purple" className="rounded-full px-7! py-2! flex flex-col" onClick={() => updateState("home")} {...homeButtonProps}>
+                        <Button appearance='mate' color="pink" className="rounded-full px-7! py-2! flex flex-col" onClick={() => updateState("home")} {...homeButtonProps}>
                             <AiFillHome size={16}/>
                             <p className='text-xs'>Todas</p>
                         </Button>
-                        <Button appearance="mate" color="purple" className="rounded-full px-7! py-2! flex flex-col" onClick={() => updateState("personalFolder")} {...personalFolderButtonProps}>
+                        <Button appearance="mate" color="pink" className="rounded-full px-7! py-2! flex flex-col" onClick={() => updateState("personalFolder")} {...personalFolderButtonProps}>
                             <PiFolderUserBold size={16}/>
                             <p className="text-xs">Mis fotos</p>
                         </Button>
@@ -302,7 +302,7 @@ export default function Navbar() {
 
                     {!isDemo && (
                         <>
-                            <Button appearance='mate' color="purple" intensity={700} size='md' className="!rounded-full bg-purple-700/90! backdrop-blur-md! border-purple-500! text-white! md:text-[#9D7BD6]! md:border-purple-500! md:bg-purple-200!" style={{ width: '48px', height: '48px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} icon={<TbPhotoPlus size={24}/>} onClick={() => fileInputRef.current?.click()}></Button>
+                            <Button appearance='mate' color="pink" intensity={700} size='md' className="!rounded-full bg-pink-500/90! backdrop-blur-md! border-pink-500! text-white! md:text-[#E83E8C]! md:border-pink-500! md:bg-pink-200!" style={{ width: '48px', height: '48px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} icon={<TbPhotoPlus size={24}/>} onClick={() => fileInputRef.current?.click()}></Button>
                             <input ref={fileInputRef} type="file" accept="image/*,video/*,.heic,.heif,.mov,.mp4" multiple className="hidden" onChange={(e) => {
                                 const files = Array.from(e.target.files || []);
                                 if (files.length === 0) return;

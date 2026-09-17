@@ -4,12 +4,12 @@
   --background: #FFF6EC;
   --foreground: #5A463A;
   --color-amber-700: #5A463A; /* Primary text and accents */
-  --color-purple-200: #E3D1F4; /* Secondary background */
+  --color-pink-200: #F8D6E4; /* Secondary background */
   --color-white-500: #FFF6EC; /* Primary background */
-  --color-white-200: #FFFCF8; /* Secondary foreground for purple buttons */
-  --color-purple-500: #C9A7E6; /* Primary color for buttons and accents */
-  --color-purple-700: #9D7BD6; /* Primary hover */
-  --color-pink-500: #F8BBD0; /* Accent color for highlights */
+  --color-white-200: #FFFCF8; /* Secondary foreground for fuchsia buttons */
+  --color-pink-500: #E83E8C; /* Primary fuchsia color for buttons and accents */
+  --color-pink-700: #C72C70; /* Primary hover */
+  --color-pink-300: #F4A6C4; /* Soft fuchsia/pink accent */
   --color-green-500: #AFCB9D; /* Accent natural */
 }
 
