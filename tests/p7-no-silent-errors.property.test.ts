@@ -104,6 +104,8 @@ interface MediaRow {
     section_id: number;
     event_id: number;
     blurhash: string | null;
+    width: number | null;
+    height: number | null;
     upload_id: string;
 }
 
@@ -133,7 +135,7 @@ function createMediaTableModel(opts: ModelOpts = {}): MediaTableModel {
             insertAttempts++;
             if (opts.insertThrows) throw new Error(DB_ERROR_MESSAGE);
             const p = params ?? [];
-            const uploadId = p[7] as string;
+            const uploadId = p[9] as string;
             if (byUploadId.has(uploadId)) return { rows: [], rowCount: 0 };
             const row: MediaRow = {
                 media_id: nextMediaId++,
@@ -144,6 +146,8 @@ function createMediaTableModel(opts: ModelOpts = {}): MediaTableModel {
                 section_id: p[4] as number,
                 event_id: p[5] as number,
                 blurhash: (p[6] as string | null) ?? null,
+                width: (p[7] as number | null) ?? null,
+                height: (p[8] as number | null) ?? null,
                 upload_id: uploadId,
             };
             byUploadId.set(uploadId, row);

@@ -502,8 +502,8 @@ export async function POST(
                     //    route module). Both converge via ON CONFLICT.
                     try {
                         const insertResult = await pool.query(
-                            `INSERT INTO media (content, type, date, user_id, section_id, event_id, blurhash, upload_id)
-                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                            `INSERT INTO media (content, type, date, user_id, section_id, event_id, blurhash, width, height, upload_id)
+                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                              ON CONFLICT (upload_id) WHERE upload_id IS NOT NULL DO NOTHING`,
                             [
                                 blob.url,
@@ -512,6 +512,12 @@ export async function POST(
                                 parsed.userId,
                                 sectionId,
                                 parsed.eventId,
+                                null,
+                                // Reconciliation has no client pixels, so width/
+                                // height are unknown here — insert NULL, mirroring
+                                // the blurhash-null decision above. The column is
+                                // nullable; the client measures on load.
+                                null,
                                 null,
                                 parsed.uploadId,
                             ],

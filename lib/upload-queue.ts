@@ -80,6 +80,14 @@ export interface QueueRecord {
      * Optional/back-compat: legacy records without it behave as blurhash-less.
      */
     blurhash?: string | null;
+    /**
+     * Intrinsic pixel dimensions of the image, or null/absent when unknown.
+     * Persisted so confirm-only recovery and auto-resume after a reload send the
+     * SAME dimensions the same-session confirm would have. Optional/back-compat:
+     * legacy records without them behave as dimensionless.
+     */
+    width?: number | null;
+    height?: number | null;
     /** Last error message on failure; null otherwise (Req 18.2). */
     error: string | null;
     /**

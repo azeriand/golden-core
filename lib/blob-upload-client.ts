@@ -106,6 +106,14 @@ export interface BlobUploadResult {
     processed: boolean;
     /** Pass-through BlurHash (null unless the caller supplied one). */
     blurhash: string | null;
+    /**
+     * Intrinsic pixel dimensions of the uploaded image, or null when unknown
+     * (videos, non-images, skipped images, or a preprocessing failure that could
+     * not measure them). Produced by preprocessImage from the decoded pixels and
+     * threaded into the confirm body so the gallery can lay out without a shift.
+     */
+    width: number | null;
+    height: number | null;
 }
 
 /** True only for files whose content type marks them as an image (Req 5.6/5.8). */
@@ -153,10 +161,18 @@ export async function uploadToBlob(
     // result so confirm can persist it; if the caller ALSO supplied a blurhash
     // via args, the preprocess value takes precedence when present.
     let preprocessBlurhash: string | null = null;
+    // Intrinsic pixel dimensions from preprocessing (Req: masonry layout). Like
+    // blurhash these are non-blocking: preprocessImage returns them for images it
+    // decoded (even when it kept the original bytes), and 0/unknown otherwise. We
+    // thread whatever it produced into the result so confirm can persist them.
+    let preprocessWidth = 0;
+    let preprocessHeight = 0;
 
     if (isImageFile(file)) {
         const pre = await preprocessImage(file, args.preprocessOptions);
         preprocessBlurhash = pre.blurhash;
+        preprocessWidth = pre.width;
+        preprocessHeight = pre.height;
         if (pre.processed) {
             bodyToUpload = pre.blob;
             processed = true;
@@ -235,5 +251,9 @@ export async function uploadToBlob(
         // any caller-supplied value; else null. Videos/non-images never produce
         // one here (preprocessBlurhash stays null).
         blurhash: preprocessBlurhash ?? args.blurhash ?? null,
+        // Intrinsic dimensions from preprocessing; null (not 0) when unknown so
+        // the confirm body and DB carry a clean "no dimensions" signal.
+        width: preprocessWidth > 0 ? preprocessWidth : null,
+        height: preprocessHeight > 0 ? preprocessHeight : null,
     };
 }

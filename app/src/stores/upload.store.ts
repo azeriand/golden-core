@@ -77,6 +77,14 @@ export interface UploadItem {
    */
   blurhash: string | null;
   /**
+   * Intrinsic pixel dimensions of the image (Req: masonry layout). Computed
+   * during preprocessing, threaded into the confirm body, and persisted to the
+   * queue record so recovery/auto-resume confirm bodies carry them. null for
+   * videos/non-images or when preprocessing could not measure the image.
+   */
+  width: number | null;
+  height: number | null;
+  /**
    * RECOVERY PREVIEW (Change 3d). A data URL thumbnail persisted at enqueue for
    * records whose bytes are NOT stored (video / oversized image), so a surfaced
    * recovery item shows a real preview instead of a blank placeholder. null for
@@ -394,6 +402,10 @@ function toRecord(
     // Persist the client BlurHash so recovery/auto-resume confirm bodies carry
     // it (Change 2 pt4). null until preprocessing produces one.
     blurhash: item.blurhash,
+    // Persist intrinsic dimensions so recovery/auto-resume confirm bodies carry
+    // them. null until preprocessing measures the image.
+    width: item.width,
+    height: item.height,
     error: item.error,
     // Recovery-UX metadata (Change 3): classification + byte/thumbnail policy.
     kind,
@@ -489,6 +501,8 @@ function buildRecoverySurfaceItem(
     abort: null,
     mediaResult: null,
     blurhash: typeof r.blurhash === "string" ? r.blurhash : null,
+    width: typeof r.width === "number" ? r.width : null,
+    height: typeof r.height === "number" ? r.height : null,
     // Show the persisted thumbnail (video/oversized image) if present.
     thumbnailDataUrl:
       typeof r.thumbnailDataUrl === "string" ? r.thumbnailDataUrl : null,
@@ -835,6 +849,8 @@ const useUploadStore = create<UploadStore>((set, get) => {
       processedSize: result.processedSize,
       contentType: result.contentType,
       blurhash: result.blurhash,
+      width: result.width,
+      height: result.height,
     });
     // Fire-and-forget: persisting the blobUrl for recovery must not block the
     // confirm step (Req 11.6).
@@ -844,6 +860,8 @@ const useUploadStore = create<UploadStore>((set, get) => {
       processedSize: result.processedSize,
       contentType: result.contentType,
       blurhash: result.blurhash,
+      width: result.width,
+      height: result.height,
     });
 
     // Confirm => DB row. ONLY confirm success (200/201) marks the item complete
@@ -986,6 +1004,8 @@ const useUploadStore = create<UploadStore>((set, get) => {
         abort: null,
         mediaResult: null,
         blurhash: null,
+        width: null,
+        height: null,
         thumbnailDataUrl: null,
         recovery: null,
         // Capture the enqueue-time upload-intent date EXACTLY ONCE per item
@@ -1159,6 +1179,14 @@ const useUploadStore = create<UploadStore>((set, get) => {
         };
         if (typeof r.blurhash === "string" && r.blurhash.length > 0) {
           confirmBody.blurhash = r.blurhash;
+        }
+        // Carry persisted dimensions so the recovered media lays out without a
+        // shift, matching the same-session confirm.
+        if (typeof r.width === "number" && r.width > 0) {
+          confirmBody.width = r.width;
+        }
+        if (typeof r.height === "number" && r.height > 0) {
+          confirmBody.height = r.height;
         }
 
         // GA4: the user is retrying ONLY the confirm of an already-uploaded Blob.
@@ -1460,6 +1488,8 @@ const useUploadStore = create<UploadStore>((set, get) => {
               abort: null,
               mediaResult: null,
               blurhash: typeof r.blurhash === "string" ? r.blurhash : null,
+              width: typeof r.width === "number" ? r.width : null,
+              height: typeof r.height === "number" ? r.height : null,
               thumbnailDataUrl: null,
               recovery: null,
               // Seed from the persisted record; processOne re-resolves it from
@@ -1572,6 +1602,14 @@ const useUploadStore = create<UploadStore>((set, get) => {
         if (typeof r.blurhash === "string" && r.blurhash.length > 0) {
           confirmBody.blurhash = r.blurhash;
         }
+        // Carry persisted dimensions so cross-reload recovery lays out
+        // identically to the same-session confirm.
+        if (typeof r.width === "number" && r.width > 0) {
+          confirmBody.width = r.width;
+        }
+        if (typeof r.height === "number" && r.height > 0) {
+          confirmBody.height = r.height;
+        }
 
         try {
           const media = await postConfirm(eventSlug, confirmBody);
@@ -1629,6 +1667,10 @@ interface ConfirmBody {
   processedSize: number;
   date: string;
   blurhash?: string;
+  // Intrinsic pixel dimensions of the image, sent only when known (never
+  // invented). Persisted so the gallery lays out before the media loads.
+  width?: number;
+  height?: number;
   // Auto-categorization creation time-of-day ("HH:MM"), or null when the file
   // had no reliable creation time. The server matches it to a section; null (or
   // no match) leaves the media unclassified under "Sin clasificar".
@@ -1664,6 +1706,13 @@ async function confirmUpload(
   };
   if (result.blurhash != null) {
     body.blurhash = result.blurhash;
+  }
+  // Only send dimensions when known (never invented), mirroring blurhash.
+  if (result.width != null) {
+    body.width = result.width;
+  }
+  if (result.height != null) {
+    body.height = result.height;
   }
 
   return postConfirm(eventSlug, body);
