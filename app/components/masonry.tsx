@@ -122,7 +122,19 @@ export default function Masonry({ images, sections, onZoom, showPlaceholders = t
     }, []);
 
     const layoutInputs: LayoutInput[] = useMemo(
-        () => images.map((m) => ({ key: m.media_id, aspect: aspects[m.media_id] ?? null })),
+        () =>
+            images.map((m) => {
+                // Prefer the persisted intrinsic dimensions (migration 005): they
+                // are known before the media loads, so the layout is stable with
+                // no shift. Fall back to the on-load measured aspect, then to the
+                // engine's default when neither is available (legacy rows, videos
+                // without measured posters).
+                const dbAspect =
+                    m.width && m.height && m.width > 0 && m.height > 0
+                        ? m.width / m.height
+                        : null;
+                return { key: m.media_id, aspect: dbAspect ?? aspects[m.media_id] ?? null };
+            }),
         [images, aspects],
     );
 

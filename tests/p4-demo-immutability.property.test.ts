@@ -132,6 +132,8 @@ interface MediaRow {
     section_id: number;
     event_id: number;
     blurhash: string | null;
+    width: number | null;
+    height: number | null;
     upload_id: string;
 }
 
@@ -163,7 +165,7 @@ function createMediaTableModel(seed?: MediaRow): MediaTableModel {
             // the handler runs the INSERT — before deciding conflict/no-conflict.
             insertAttempts++;
             const p = params ?? [];
-            const uploadId = p[7] as string;
+            const uploadId = p[9] as string;
             if (byUploadId.has(uploadId)) {
                 return { rows: [], rowCount: 0 }; // conflict
             }
@@ -176,6 +178,8 @@ function createMediaTableModel(seed?: MediaRow): MediaTableModel {
                 section_id: p[4] as number,
                 event_id: p[5] as number,
                 blurhash: (p[6] as string | null) ?? null,
+                width: (p[7] as number | null) ?? null,
+                height: (p[8] as number | null) ?? null,
                 upload_id: uploadId,
             };
             byUploadId.set(uploadId, row);

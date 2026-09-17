@@ -61,6 +61,8 @@ CREATE TABLE public.media (
     date date NOT NULL,
     section_id integer,
     event_id serial NOT NULL,
+    width integer,
+    height integer,
     CONSTRAINT media_type_check CHECK (((media_type)::text = ANY ((ARRAY['image'::character varying, 'video'::character varying])::text[])))
 );
 

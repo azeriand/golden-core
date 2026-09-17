@@ -89,6 +89,8 @@ interface MediaRow {
     section_id: number;
     event_id: number;
     blurhash: string | null;
+    width: number | null;
+    height: number | null;
     upload_id: string;
 }
 
@@ -119,8 +121,9 @@ function createMediaTableModel(): MediaTableModel {
         // 3. INSERT ... ON CONFLICT (upload_id) DO NOTHING RETURNING *
         //    THIS IS THE CRUX: a single, synchronous, ATOMIC check-and-insert.
         //    The parameter order in the route is:
-        //    [content, type, date, user_id, section_id, event_id, blurhash, upload_id]
-        //    so upload_id is the LAST param (index 7).
+        //    [content, type, date, user_id, section_id, event_id, blurhash,
+        //     width, height, upload_id]
+        //    so upload_id is the LAST param (index 9).
         if (/INSERT INTO media/i.test(sql)) {
             const p = params ?? [];
             const content = p[0] as string;
@@ -130,7 +133,9 @@ function createMediaTableModel(): MediaTableModel {
             const sectionId = p[4] as number;
             const eventId = p[5] as number;
             const blurhash = (p[6] as string | null) ?? null;
-            const uploadId = p[7] as string;
+            const width = (p[7] as number | null) ?? null;
+            const height = (p[8] as number | null) ?? null;
+            const uploadId = p[9] as string;
 
             // Atomic: if a row already exists for this upload_id, the unique
             // index rejects the insert -> ON CONFLICT DO NOTHING -> zero rows
@@ -149,6 +154,8 @@ function createMediaTableModel(): MediaTableModel {
                 section_id: sectionId,
                 event_id: eventId,
                 blurhash,
+                width,
+                height,
                 upload_id: uploadId,
             };
             byUploadId.set(uploadId, row);

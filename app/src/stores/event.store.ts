@@ -25,6 +25,8 @@ function mediaEqual(a: Media, b: Media): boolean {
         a.date === b.date &&
         a.section_id === b.section_id &&
         a.blurhash === b.blurhash &&
+        a.width === b.width &&
+        a.height === b.height &&
         a.username === b.username
     );
 }

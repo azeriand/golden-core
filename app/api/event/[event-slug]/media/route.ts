@@ -4,7 +4,7 @@ import pool from '@/lib/db';
 import { NextRequest } from 'next/server';
 import { verifyRequest } from '@/lib/auth';
 import { put } from "@vercel/blob";
-import { generateBlurhash } from '@/lib/blurhash';
+import { generateBlurhash, getImageDimensions } from '@/lib/blurhash';
 import { extractCreationTime } from '@/lib/media-metadata';
 import { resolveSectionIdByTime } from '@/lib/section-match';
 
@@ -103,11 +103,19 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // "Sin clasificar" section.
     const photoTime: string | null = await extractCreationTime(file);
 
-    // Generate a blurhash preview for images only.
+    // Generate a blurhash preview AND read intrinsic dimensions for images only.
+    // Both are derived from the same decoded buffer via sharp and are best-effort
+    // (null when sharp is unavailable or the image can't be read), so the upload
+    // never fails on their account.
     let blurhash: string | null = null;
+    let width: number | null = null;
+    let height: number | null = null;
     if (isImage) {
         const arrayBuffer = await file.arrayBuffer();
         blurhash = await generateBlurhash(arrayBuffer);
+        const dims = await getImageDimensions(arrayBuffer);
+        width = dims.width;
+        height = dims.height;
     }
 
     // Find event
@@ -147,10 +155,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         });
 
         const result = await pool.query(
-            `INSERT INTO media (content, type, date, user_id, section_id, event_id, blurhash)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
+            `INSERT INTO media (content, type, date, user_id, section_id, event_id, blurhash, width, height)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              RETURNING *`,
-            [blob.url, mediaType, date, userId, sectionId, eventId, blurhash]
+            [blob.url, mediaType, date, userId, sectionId, eventId, blurhash, width, height]
         );
 
         return new Response(JSON.stringify(result.rows[0]), {

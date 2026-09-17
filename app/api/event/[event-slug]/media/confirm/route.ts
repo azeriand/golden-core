@@ -47,6 +47,11 @@ export const runtime = 'nodejs';
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB (legacy MAX_FILE_SIZE)
 
+// Upper bound for a persisted media dimension (px). Generous headroom over the
+// client preprocessing cap (maxEdge default 2000) so unprocessed originals still
+// fit, while rejecting absurd/hostile values in the confirm body.
+const MAX_MEDIA_DIMENSION = 100000;
+
 const ALLOWED_IMAGE_CONTENT_TYPES = [
     'image/jpeg',
     'image/png',
@@ -85,6 +90,11 @@ interface ConfirmUploadBody {
     processedSize: number;
     date: string;
     blurhash?: string | null;
+    // Intrinsic pixel dimensions of the image, or null/absent when unknown
+    // (videos, non-images, or a preprocessing measure failure). Persisted so the
+    // gallery can lay out before the media loads.
+    width?: number | null;
+    height?: number | null;
     // Auto-categorization creation time-of-day ("HH:MM") or null. Matched to a
     // section server-side; null (or no match) => unclassified ("Sin clasificar").
     creationTime?: string | null;
@@ -117,6 +127,8 @@ function parseConfirmBody(raw: unknown): ParsedBody {
         processedSize,
         date,
         blurhash,
+        width,
+        height,
         creationTime,
     } = p;
 
@@ -156,6 +168,20 @@ function parseConfirmBody(raw: unknown): ParsedBody {
     if (blurhash !== undefined && blurhash !== null && typeof blurhash !== 'string') {
         return { error: 'Invalid confirm request' };
     }
+    // width/height are optional; if present each must be a positive, finite,
+    // integer number of pixels (bounded to defend against absurd values) or
+    // null. Anything else is a bad request. They are validated as a pair below
+    // but each is checked independently here so a single malformed value fails.
+    const isValidDimension = (v: unknown): boolean =>
+        v === undefined ||
+        v === null ||
+        (typeof v === 'number' &&
+            Number.isInteger(v) &&
+            v > 0 &&
+            v <= MAX_MEDIA_DIMENSION);
+    if (!isValidDimension(width) || !isValidDimension(height)) {
+        return { error: 'Invalid confirm request' };
+    }
     // creationTime is optional; if present must be a valid "HH:MM"/"HH:MM:SS"
     // time-of-day string or null. A malformed non-null value is a bad request.
     if (
@@ -175,6 +201,8 @@ function parseConfirmBody(raw: unknown): ParsedBody {
         processedSize,
         date,
         blurhash: typeof blurhash === 'string' ? blurhash : null,
+        width: typeof width === 'number' ? width : null,
+        height: typeof height === 'number' ? height : null,
         creationTime: isValidTimeOfDay(creationTime) ? creationTime.trim() : null,
     };
 }
@@ -200,6 +228,8 @@ async function shapeMediaRow(
         section_id: number | null;
         blurhash: string | null;
         poster_url?: string | null;
+        width?: number | null;
+        height?: number | null;
     },
     viewerUserId: number,
 ) {
@@ -236,6 +266,10 @@ async function shapeMediaRow(
         // (Req 11.4).
         poster_url: row.poster_url ?? null,
         username: info.username ?? null,
+        // Intrinsic dimensions persisted at confirm (migration 005). NULL DB
+        // value maps to null in the DTO ("unknown — measure on load").
+        width: row.width ?? null,
+        height: row.height ?? null,
     };
 }
 
@@ -408,8 +442,8 @@ export async function POST(
     // SELECT-then-INSERT primary path.
     try {
         const insertResult = await pool.query(
-            `INSERT INTO media (content, type, date, user_id, section_id, event_id, blurhash, upload_id)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            `INSERT INTO media (content, type, date, user_id, section_id, event_id, blurhash, width, height, upload_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
              ON CONFLICT (upload_id) WHERE upload_id IS NOT NULL DO NOTHING
              RETURNING *`,
             [
@@ -420,6 +454,8 @@ export async function POST(
                 sectionId,
                 eventId,
                 body.blurhash,
+                body.width,
+                body.height,
                 body.uploadId,
             ],
         );
