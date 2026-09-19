@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { Media } from "@/app/dto/media";
-import useGlobalStore from "./global.store";
 import useEventStore from "./event.store";
 import useAuthStore from "./auth.store";
 import { uploadToBlob, type BlobUploadResult } from "@/lib/blob-upload-client";
@@ -578,6 +577,55 @@ const useUploadStore = create<UploadStore>((set, get) => {
   };
 
   /**
+   * Run `tasks` with AT MOST `limit` executing concurrently, in order. Each task
+   * is a zero-arg async thunk; rejections are swallowed (callers make their work
+   * best-effort). Returns when every task has settled.
+   *
+   * WHY THIS EXISTS (UI-blocking fix): the enqueue-time preprocessing per file
+   * (full-file `arrayBuffer()` reads for EXIF/container parsing, canvas
+   * thumbnail generation, and writing whole originals into IndexedDB) is HEAVY
+   * main-thread work. Firing it for ALL selected files at once (up to 20)
+   * saturated the main thread and IndexedDB, which starved React's placeholder
+   * render (only a few tiles appeared), froze scrolling, and blocked the view
+   * switch. Bounding this work to the SAME small window as the uploads keeps the
+   * page responsive while enqueue proceeds.
+   */
+  const runBounded = async (
+    tasks: Array<() => Promise<void>>,
+    limit: number
+  ): Promise<void> => {
+    let cursor = 0;
+    const runNext = async (): Promise<void> => {
+      const index = cursor++;
+      if (index >= tasks.length) return;
+      try {
+        await tasks[index]();
+      } catch {
+        /* best-effort: never let one item's preprocessing break the batch */
+      }
+      await runNext();
+    };
+    const workers = Array.from(
+      { length: Math.max(1, Math.min(limit, tasks.length)) },
+      () => runNext()
+    );
+    await Promise.all(workers);
+  };
+
+  /**
+   * Persist the cheap enqueue-time METADATA record for one item RIGHT AWAY
+   * (status 'queued'). This is essential for items that sit behind the
+   * MAX_CONCURRENT cap: they never enter processOne (which is where the record
+   * used to be first written), so without this a mid-upload refresh would find
+   * no record for them and they would vanish instead of resuming. It is a small,
+   * bytes-less record, so it stays eager (unlike the heavy byte/thumbnail work
+   * below). Best-effort / fire-and-forget.
+   */
+  const persistEnqueueRecord = (item: UploadItem, eventSlug: string) => {
+    void uploadQueue.put(toRecord(item, eventSlug, "queued"));
+  };
+
+  /**
    * Apply the enqueue-time byte-persistence policy for one item (Change 3a).
    * Best-effort and swallow-safe: any failure is a no-op (uploads still work,
    * just without cross-reload resume/thumbnail). Runs AFTER the item is in the
@@ -585,19 +633,16 @@ const useUploadStore = create<UploadStore>((set, get) => {
    *
    *   image <= cap  -> persist the actual bytes (transparent auto-resume).
    *   video/oversized -> persist ONLY a preview thumbnail (no bytes).
+   *
+   * HEAVY (main-thread) work: this reads/decodes the whole file, so it is run
+   * through `runBounded` at enqueue rather than for every file at once (see the
+   * enqueue loop). The cheap metadata record is written separately + eagerly by
+   * `persistEnqueueRecord`.
    */
   const persistEnqueuePayload = async (item: UploadItem, eventSlug: string) => {
     const type = item.contentType;
     const isImage = isImageMime(type);
     const oversized = isImage && item.originalSize > RESUMABLE_MAX_BYTES;
-
-    // Persist the metadata record for EVERY enqueued item RIGHT AWAY (status
-    // 'queued'). This is essential for items that sit behind the MAX_CONCURRENT
-    // cap: they never enter processOne (which is where the record used to be
-    // first written), so without this a mid-upload refresh would find no record
-    // for them and they would vanish instead of resuming. processOne still
-    // patches status transitions later for the active ones. Best-effort.
-    void uploadQueue.put(toRecord(item, eventSlug, "queued"));
 
     if (isImage && !oversized) {
       // Resumable image: persist the actual bytes to the separate bytes store.
@@ -1023,8 +1068,13 @@ const useUploadStore = create<UploadStore>((set, get) => {
 
       set((state) => ({ items: [...state.items, ...newItems] }));
 
-      // Switch global state to 'myPhotos' (unchanged behavior).
-      useGlobalStore.getState().changeState("myPhotos");
+      // Persist the cheap metadata record for EVERY item right away (small,
+      // bytes-less) so items waiting behind the concurrency cap are recoverable
+      // after a mid-upload refresh. The HEAVY byte/thumbnail/EXIF work is bounded
+      // and deferred below so it cannot starve the placeholder render.
+      for (const item of newItems) {
+        persistEnqueueRecord(item, _eventSlug);
+      }
 
       // BYTE-PERSISTENCE POLICY (Change 3a) — best-effort, per item, at enqueue:
       //   * image AND size <= RESUMABLE_MAX_BYTES -> persist the actual bytes so
@@ -1033,20 +1083,37 @@ const useUploadStore = create<UploadStore>((set, get) => {
       //     small preview thumbnail so recovery can show it + a dismissable
       //     warning.
       // All persistence is fire-and-forget and swallow-safe: IndexedDB/canvas
-      // failures never block enqueue or the upload itself (Req 11.6). The queue
-      // metadata record is written by processOne's `uploadQueue.put(toRecord…)`
-      // which already carries kind/hasBytes/oversized/thumbnailDataUrl.
-      for (const item of newItems) {
-        // Persist the initial record FIRST, THEN resolve+patch the creation
-        // time. Chaining avoids a race where the initial put (which carries the
-        // still-null creationTime) lands AFTER the extraction's patch and
-        // clobbers it in the persisted record. The same-session confirm does not
-        // depend on this ordering (processOne re-resolves from the live item),
-        // but confirm-only recovery reads the persisted value, so it must not be
-        // lost. Best-effort/fire-and-forget: never blocks enqueue or the upload.
-        void persistEnqueuePayload(item, _eventSlug).then(() => resolveCreationTime(item));
-      }
+      // failures never block enqueue or the upload itself (Req 11.6).
+      //
+      // BOUNDED + DEFERRED (UI-blocking fix): previously this ran the heavy
+      // per-file work (persistEnqueuePayload: full-file decode/thumbnail +
+      // writing whole originals to IndexedDB; resolveCreationTime: full-file
+      // `arrayBuffer()` + EXIF/container parse) for EVERY file at once. With many
+      // files that saturated the main thread, so React never got to paint the
+      // just-added placeholders (only a few appeared), scrolling froze, and the
+      // view switch was blocked. We now (a) DEFER this off the enqueue tick so
+      // the placeholder render paints first, and (b) BOUND it to MAX_CONCURRENT
+      // so at most a few files are decoded/parsed at a time. Ordering within each
+      // item is preserved (payload first, then creation-time) to keep the same
+      // no-clobber guarantee for the persisted creationTime. This is purely
+      // best-effort recovery/categorization pre-work; processOne re-resolves the
+      // creation time before upload, so deferring it never affects correctness.
+      const enqueueTasks = newItems.map((item) => async () => {
+        await persistEnqueuePayload(item, _eventSlug);
+        await resolveCreationTime(item);
+      });
+      const scheduleBackground =
+        typeof setTimeout === "function"
+          ? (fn: () => void) => setTimeout(fn, 0)
+          : (fn: () => void) => void fn();
+      scheduleBackground(() => {
+        void runBounded(enqueueTasks, MAX_CONCURRENT);
+      });
 
+      // Start uploads immediately — the transfer path (processQueue -> startItem
+      // -> processOne) is already bounded by MAX_CONCURRENT and re-resolves the
+      // creation time per item, so it does not depend on the deferred pre-work
+      // above.
       get().processQueue();
     },
 
@@ -1551,11 +1618,11 @@ const useUploadStore = create<UploadStore>((set, get) => {
         set((state) => ({ items: [...state.items, ...toResume] }));
       }
 
-      // Make the surfaced/recovered items visible in the same view the user uses
-      // for their own uploads (unchanged behavior vs enqueueFiles).
-      if (toSurface.length > 0 || toConfirm.length > 0 || toResume.length > 0) {
-        useGlobalStore.getState().changeState("myPhotos");
-      }
+      // Surfaced/recovered items render through the global UploadPlaceholders
+      // host in EVERY view (home/"Todas" included), so we no longer force the
+      // view to "myPhotos" here. Forcing it fought the user trying to stay on or
+      // switch to "Todas" while uploads/recoveries were active (matching the
+      // enqueue-time change).
 
       // Kick off auto-resume through the normal concurrency-capped pump.
       if (toResume.length > 0) {
