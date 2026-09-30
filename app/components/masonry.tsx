@@ -7,7 +7,12 @@ import MediaItem from "./media-item";
 import useUploadStore from "../src/stores/upload.store";
 import { useShallow } from "zustand/react/shallow";
 import MediaItemPlaceholder from "./media-item-placeholder";
-import { computeLayout, LayoutInput } from "../../lib/masonry-layout";
+import {
+    computeLayout,
+    LayoutInput,
+    responsiveColumns,
+    segmentSizeForColumns,
+} from "../../lib/masonry-layout";
 
 const GRID_GAP = 4; // px; matches the Tailwind gap-1 used elsewhere.
 
@@ -44,25 +49,56 @@ export function UploadPlaceholders() {
     const retryConfirm = useUploadStore((state) => state.retryConfirm);
     const dismissItem = useUploadStore((state) => state.dismissItem);
 
+    // Measure width so the placeholder grid uses the SAME responsive column
+    // count as the gallery below it (2 on mobile, more on wider screens).
+    const containerRef = useRef<HTMLElement>(null);
+    const [containerWidth, setContainerWidth] = useState(0);
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        const update = () => setContainerWidth(el.clientWidth);
+        update();
+        const ro = new ResizeObserver(update);
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
+
+    // Column count is derived from the measured width; fall back to 2 before the
+    // first measurement so the initial paint matches the mobile default.
+    const columns = containerWidth > 0 ? responsiveColumns(containerWidth) : 2;
+
     if (placeholderIds.length === 0) return null;
 
-    const odd = placeholderIds.filter((_, i) => i % 2 !== 0);
-    const even = placeholderIds.filter((_, i) => i % 2 === 0);
+    // Distribute ids round-robin across `columns` flex columns, preserving order.
+    const buckets = distributeIntoColumns(placeholderIds, columns);
 
     return (
-        <section className='grid grid-cols-2 gap-1 grid-flow-row w-full'>
-            <div className='flex flex-col gap-1'>
-                {odd.map((id) => (
-                    <MediaItemPlaceholder key={id} id={id} onRetry={retryItem} onRetryConfirm={retryConfirm} onDismiss={dismissItem} />
-                ))}
-            </div>
-            <div className='flex flex-col gap-1'>
-                {even.map((id) => (
-                    <MediaItemPlaceholder key={id} id={id} onRetry={retryItem} onRetryConfirm={retryConfirm} onDismiss={dismissItem} />
-                ))}
-            </div>
+        <section
+            ref={containerRef}
+            className='grid gap-1 grid-flow-row w-full'
+            style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+        >
+            {buckets.map((bucket, col) => (
+                <div key={col} className='flex flex-col gap-1'>
+                    {bucket.map((id) => (
+                        <MediaItemPlaceholder key={id} id={id} onRetry={retryItem} onRetryConfirm={retryConfirm} onDismiss={dismissItem} />
+                    ))}
+                </div>
+            ))}
         </section>
     );
+}
+
+/**
+ * Split an ordered id list into `columns` buckets round-robin (index % columns),
+ * preserving relative order within each bucket. Generalizes the previous
+ * odd/even two-column split to any responsive column count.
+ */
+function distributeIntoColumns<T>(ids: T[], columns: number): T[][] {
+    const cols = Math.max(1, columns);
+    const buckets: T[][] = Array.from({ length: cols }, () => []);
+    ids.forEach((id, index) => buckets[index % cols].push(id));
+    return buckets;
 }
 
 export default function Masonry({ images, sections, onZoom, showPlaceholders = true }: MasonryProps) {
@@ -86,11 +122,6 @@ export default function Masonry({ images, sections, onZoom, showPlaceholders = t
     const retryItem = useUploadStore((state) => state.retryItem);
     const retryConfirm = useUploadStore((state) => state.retryConfirm);
     const dismissItem = useUploadStore((state) => state.dismissItem);
-
-    // Distribute placeholders between two columns (odd/even pattern) — identical
-    // ordering/placement to before, now keyed off the id list.
-    const placeholdersOdd = placeholderIds.filter((_, index) => index % 2 !== 0);
-    const placeholdersEven = placeholderIds.filter((_, index) => index % 2 === 0);
 
     // --- Segmented justified layout -------------------------------------------
     // Measure the container width so the layout engine can justify each row to
@@ -138,9 +169,22 @@ export default function Masonry({ images, sections, onZoom, showPlaceholders = t
         [images, aspects],
     );
 
+    // Derive the responsive column count from the measured container width, then
+    // size each segment to span two justified grid rows plus one banner at that
+    // column count. Wider screens get more columns; the banner/expand logic in
+    // the engine is column-count agnostic, so it keeps working unchanged.
+    const columns = responsiveColumns(containerWidth);
+    const segmentSize = segmentSizeForColumns(columns);
+
     const cells = useMemo(
-        () => computeLayout(layoutInputs, { containerWidth, gap: GRID_GAP }),
-        [layoutInputs, containerWidth],
+        () =>
+            computeLayout(layoutInputs, {
+                containerWidth,
+                gap: GRID_GAP,
+                rowOf: columns,
+                segmentSize,
+            }),
+        [layoutInputs, containerWidth, columns, segmentSize],
     );
 
     // Group computed cells by their row index so each row is a flex line.
@@ -163,17 +207,17 @@ export default function Masonry({ images, sections, onZoom, showPlaceholders = t
     return (
         <div className='flex flex-col gap-1 w-full'>
             {placeholderIds.length > 0 && (
-                <section className='grid grid-cols-2 gap-1 grid-flow-row'>
-                    <div className='flex flex-col gap-1'>
-                        {placeholdersOdd.map((id: string) => (
-                            <MediaItemPlaceholder key={id} id={id} onRetry={retryItem} onRetryConfirm={retryConfirm} onDismiss={dismissItem} />
-                        ))}
-                    </div>
-                    <div className='flex flex-col gap-1'>
-                        {placeholdersEven.map((id: string) => (
-                            <MediaItemPlaceholder key={id} id={id} onRetry={retryItem} onRetryConfirm={retryConfirm} onDismiss={dismissItem} />
-                        ))}
-                    </div>
+                <section
+                    className='grid gap-1 grid-flow-row'
+                    style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+                >
+                    {distributeIntoColumns(placeholderIds, columns).map((bucket, col) => (
+                        <div key={col} className='flex flex-col gap-1'>
+                            {bucket.map((id: string) => (
+                                <MediaItemPlaceholder key={id} id={id} onRetry={retryItem} onRetryConfirm={retryConfirm} onDismiss={dismissItem} />
+                            ))}
+                        </div>
+                    ))}
                 </section>
             )}
 
