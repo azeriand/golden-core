@@ -40,21 +40,57 @@ export default function MediaItem({index, src, type, poster_url, likes, liked, m
     // instead, while the <video> itself still plays when opened (Req 15.1).
     const hasPoster = isVideo && !!poster_url && !posterFailed;
 
-    // Timeout guard for poster loading (Req 12.5). While a poster_url is present
-    // but has not yet loaded, arm a timer; if the poster does not paint in time
-    // we flip to the placeholder. The timer is cleared on a successful poster
-    // load (below, via the poster <img>'s onLoad) and on unmount, so a poster
-    // that loads in time never trips the fallback.
+    // Timeout guard for poster loading (Req 12.5). The poster <img> uses native
+    // lazy loading, so the browser does not even START fetching it until the
+    // cell nears the viewport. The guard must therefore measure time-since-
+    // VISIBLE, not time-since-mount: otherwise a cell that sits just off-screen
+    // for longer than the timeout (slow scrolling) trips the fallback before its
+    // poster has had any chance to fetch, permanently swapping in the placeholder
+    // even after it scrolls into view. Fast scrolling brought the cell on-screen
+    // within the window, so the poster loaded — hence the "only fast scroll
+    // works" bug. We arm the timer only once the poster wrapper actually enters
+    // the viewport (via IntersectionObserver), matching the browser's own lazy
+    // fetch trigger.
+    const posterWrapperRef = useRef<HTMLDivElement>(null);
     const posterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [posterVisible, setPosterVisible] = useState(false);
     useEffect(() => {
-        // Only guard while we actually have a poster to wait for and it has not
-        // yet loaded or failed. Re-runs whenever these inputs change.
-        if (!isVideo || !poster_url || loaded || posterFailed) return;
+        // Observe until the poster becomes visible once; afterwards there is
+        // nothing left to watch. No-op for non-video cells or after visibility.
+        if (!isVideo || !poster_url || posterVisible) return;
+        const el = posterWrapperRef.current;
+        if (!el) return;
+        // Environments without IntersectionObserver (jsdom in tests, very old
+        // browsers) can't observe visibility. Degrade safely by treating the
+        // poster as immediately visible so the timeout guard still runs — the
+        // guard is a safety net, and losing lazy-awareness there is harmless.
+        if (typeof IntersectionObserver === "undefined") {
+            setPosterVisible(true);
+            return;
+        }
+        // Use the same rootMargin the browser uses for lazy loading so the guard
+        // arms right around when the fetch starts, not before.
+        const io = new IntersectionObserver(
+            (entries) => {
+                if (entries.some((e) => e.isIntersecting)) setPosterVisible(true);
+            },
+            { rootMargin: "200px" },
+        );
+        io.observe(el);
+        return () => io.disconnect();
+    }, [isVideo, poster_url, posterVisible]);
+
+    useEffect(() => {
+        // Arm the fallback timer only once the poster is on-screen (fetch has
+        // started) and still hasn't loaded/failed. Cleared on load (via the
+        // poster <img>'s onLoad), on failure, and on unmount, so a poster that
+        // loads in time never trips the fallback.
+        if (!isVideo || !poster_url || !posterVisible || loaded || posterFailed) return;
         posterTimerRef.current = setTimeout(() => setPosterFailed(true), POSTER_LOAD_TIMEOUT_MS);
         return () => {
             if (posterTimerRef.current) clearTimeout(posterTimerRef.current);
         };
-    }, [isVideo, poster_url, loaded, posterFailed]);
+    }, [isVideo, poster_url, posterVisible, loaded, posterFailed]);
 
     // On a successful poster paint (the poster <img>'s onLoad): clear the
     // timeout guard and mark loaded so the fallback can never fire afterwards.
@@ -121,7 +157,7 @@ export default function MediaItem({index, src, type, poster_url, likes, liked, m
             )}
 
             {isVideo ? (
-                <div className={`relative cursor-pointer ${layoutDriven ? 'h-full' : ''}`} style={hasPoster ? undefined : placeholderStyle} onClick={handleClick}>
+                <div ref={posterWrapperRef} className={`relative cursor-pointer ${layoutDriven ? 'h-full' : ''}`} style={hasPoster ? undefined : placeholderStyle} onClick={handleClick}>
                     {hasPoster ? (
                         // Poster ready: render the generated poster frame as a real
                         // <img> (via next/image), NOT the <video>'s `poster`
@@ -151,12 +187,27 @@ export default function MediaItem({index, src, type, poster_url, likes, liked, m
                             className={`w-full pointer-events-none transition-all duration-200 ${layoutDriven ? 'absolute inset-0 h-full object-cover' : 'h-auto'}`}
                         />
                     ) : (
-                        // No poster yet (poster_url is null) OR the poster failed /
-                        // timed out: reserve layout space with a placeholder so the
-                        // slot is a visible element and the gallery stays consistent
-                        // without blocking on poster availability (Req 12.1, 12.4,
-                        // 12.5). The video still plays when opened (Req 15.1).
-                        <div data-testid="poster-placeholder" className="w-full h-full bg-black/10" style={layoutDriven ? undefined : { aspectRatio: FALLBACK_ASPECT_RATIO }} />
+                        // No poster yet (poster_url is null, worker still generating)
+                        // OR the poster failed / timed out: reserve layout space with
+                        // a visible placeholder so the slot is never empty while we
+                        // wait, keeping the gallery consistent without blocking on
+                        // poster availability (Req 12.1, 12.4, 12.5). The video still
+                        // plays when opened (Req 15.1). Prefer the blurhash preview
+                        // (an actual image) when the upload captured one, so the slot
+                        // shows a representative frame instead of a flat box; fall
+                        // back to a neutral tint when no blurhash exists or it fails
+                        // to decode.
+                        <div data-testid="poster-placeholder" className="w-full h-full bg-black/10 relative overflow-hidden" style={layoutDriven ? undefined : { aspectRatio: FALLBACK_ASPECT_RATIO }}>
+                            {blurhash && !blurhashFailed && (
+                                <BlurhashCanvas
+                                    blurhash={blurhash}
+                                    width={32}
+                                    height={32}
+                                    className="w-full h-full absolute inset-0 object-cover"
+                                    onDecodeError={handleBlurhashDecodeError}
+                                />
+                            )}
+                        </div>
                     )}
                     <div data-testid="play-overlay" className="absolute inset-0 flex items-center justify-center">
                         <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center">
