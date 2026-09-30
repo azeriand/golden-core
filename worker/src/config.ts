@@ -46,6 +46,16 @@ export interface WorkerConfig {
   readonly maxDimension: number;
   /** Base in seconds for exponential retry backoff (>= 1). */
   readonly backoffBaseSeconds: number;
+  /** Max image display-derivative edge in pixels (>= 1). */
+  readonly imageMaxDimension: number;
+  /** Image display-derivative encoder quality, 1-100. */
+  readonly imageQuality: number;
+  /** Max transcoded video height in pixels (>= 1). */
+  readonly videoMaxHeight: number;
+  /** Transcode quality: x264 CRF (lower = higher quality), 0-51. */
+  readonly videoCrf: number;
+  /** ffmpeg x264 speed/size preset (e.g. 'veryfast'). */
+  readonly videoPreset: string;
 }
 
 /** Defaults applied when an optional tunable is unset or blank. */
@@ -56,7 +66,31 @@ export const CONFIG_DEFAULTS = {
   staleProcessingSeconds: 300,
   maxDimension: 640,
   backoffBaseSeconds: 5,
+  // Display-derivative tunables (media-transcoding feature). Defaults chosen for
+  // a good balance of quality vs. delivery cost: 2000px images at WebP q80, and
+  // 1080p H.264 video at CRF 23 with the 'veryfast' preset.
+  imageMaxDimension: 2000,
+  imageQuality: 80,
+  videoMaxHeight: 1080,
+  videoCrf: 23,
+  videoPreset: 'veryfast',
 } as const;
+
+/**
+ * Allowed x264 presets. Restricting to the known set means a typo in the env var
+ * fails fast at startup rather than surfacing as a cryptic ffmpeg error mid-job.
+ */
+const VALID_VIDEO_PRESETS = new Set<string>([
+  'ultrafast',
+  'superfast',
+  'veryfast',
+  'faster',
+  'fast',
+  'medium',
+  'slow',
+  'slower',
+  'veryslow',
+]);
 
 /** Raised when configuration is missing or invalid. Never contains secret values. */
 export class ConfigError extends Error {
@@ -158,6 +192,43 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): WorkerConfig {
     1,
   );
 
+  // --- Display-derivative tunables (media-transcoding) ------------------------
+  const imageMaxDimension = parseIntTunable(
+    env,
+    'IMAGE_MAX_DIMENSION',
+    CONFIG_DEFAULTS.imageMaxDimension,
+    1,
+  );
+  // Encoder quality is a 1-100 scale; parse as an int and range-check both ends.
+  const imageQuality = parseIntTunable(
+    env,
+    'IMAGE_QUALITY',
+    CONFIG_DEFAULTS.imageQuality,
+    1,
+  );
+  if (imageQuality > 100) {
+    throw new ConfigError(
+      `IMAGE_QUALITY must be <= 100, received: ${imageQuality}`,
+    );
+  }
+  const videoMaxHeight = parseIntTunable(
+    env,
+    'VIDEO_MAX_HEIGHT',
+    CONFIG_DEFAULTS.videoMaxHeight,
+    1,
+  );
+  // x264 CRF is a 0-51 scale (lower = higher quality). min 0 is valid.
+  const videoCrf = parseIntTunable(
+    env,
+    'VIDEO_CRF',
+    CONFIG_DEFAULTS.videoCrf,
+    0,
+  );
+  if (videoCrf > 51) {
+    throw new ConfigError(`VIDEO_CRF must be <= 51, received: ${videoCrf}`);
+  }
+  const videoPreset = parseVideoPreset(env);
+
   return {
     databaseUrl,
     blobReadWriteToken,
@@ -167,5 +238,28 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): WorkerConfig {
     staleProcessingSeconds,
     maxDimension,
     backoffBaseSeconds,
+    imageMaxDimension,
+    imageQuality,
+    videoMaxHeight,
+    videoCrf,
+    videoPreset,
   };
+}
+
+/**
+ * Parse the x264 preset env var, falling back to the default when unset/blank and
+ * rejecting an unknown value so a typo fails fast at startup (secret-free error).
+ */
+function parseVideoPreset(env: NodeJS.ProcessEnv): string {
+  const raw = env.VIDEO_PRESET;
+  if (raw === undefined || raw.trim() === '') {
+    return CONFIG_DEFAULTS.videoPreset;
+  }
+  const value = raw.trim();
+  if (!VALID_VIDEO_PRESETS.has(value)) {
+    throw new ConfigError(
+      `VIDEO_PRESET must be one of ${[...VALID_VIDEO_PRESETS].join(', ')}, received: "${raw}"`,
+    );
+  }
+  return value;
 }

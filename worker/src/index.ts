@@ -32,7 +32,7 @@ import { logger } from './logger.js';
 import {
   claimJobs as defaultClaimJobs,
   reclaimStaleProcessing as defaultReclaimStaleProcessing,
-  type PosterJob,
+  type MediaJob,
 } from './queue.js';
 import { processJob as defaultProcessJob } from './process-job.js';
 
@@ -66,9 +66,9 @@ export interface TickDeps {
   /** Return stuck 'processing' jobs to 'pending'; resolves with the count. */
   readonly reclaimStaleProcessing: (timeoutSeconds: number) => Promise<number>;
   /** Claim up to `limit` due 'pending' jobs, flipping them to 'processing'. */
-  readonly claimJobs: (limit: number) => Promise<PosterJob[]>;
+  readonly claimJobs: (limit: number) => Promise<MediaJob[]>;
   /** Process a single claimed job end to end (never throws for a normal fail). */
-  readonly processJob: (job: PosterJob) => Promise<void>;
+  readonly processJob: (job: MediaJob) => Promise<void>;
 }
 
 /**
@@ -141,7 +141,7 @@ export async function tick(
 
   // 4. Claim up to the free capacity (Req 7.1). A claim error is logged and the
   //    cycle yields no work rather than crashing the loop.
-  let claimed: PosterJob[];
+  let claimed: MediaJob[];
   try {
     claimed = await deps.claimJobs(freeCapacity);
   } catch (err) {

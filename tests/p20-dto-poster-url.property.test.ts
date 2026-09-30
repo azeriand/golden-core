@@ -159,6 +159,9 @@ describe('P20 — DTO exposes poster_url faithfully', () => {
                     blurhash: null,
                     username: null,
                     poster_url: mapEventEndpointPosterUrl(stored),
+                    original_url: null,
+                    width: null,
+                    height: null,
                 };
 
                 if (typeof stored === 'string') {

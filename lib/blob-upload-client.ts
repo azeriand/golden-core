@@ -29,10 +29,7 @@
 import { upload } from '@vercel/blob/client';
 
 import { buildCanonicalPathname } from '@/lib/upload-path';
-import {
-    preprocessImage,
-    type PreprocessOptions,
-} from '@/lib/image-preprocess';
+import { measureImage } from '@/lib/image-preprocess';
 
 /**
  * Arguments for a single direct-to-Blob upload attempt.
@@ -74,8 +71,6 @@ export interface BlobUploadArgs {
     onProgress?: (percentage: number) => void;
     /** Optional AbortSignal to cancel the in-flight upload. */
     signal?: AbortSignal;
-    /** Optional image preprocessing options forwarded to preprocessImage. */
-    preprocessOptions?: PreprocessOptions;
     /**
      * Optional client-side BlurHash, if one was already produced upstream. This
      * wrapper does NOT compute a BlurHash; it only passes through a value the
@@ -128,12 +123,17 @@ function isImageFile(file: File): boolean {
  *  1. Use `args.uploadId` as-is for the whole attempt (never regenerated).
  *  2. Classify image vs video/other by MIME (`file.type.startsWith('image/')`),
  *     consistent with Task 7.1 and the server routes.
- *  3. Images: run `preprocessImage`. If `result.processed`, upload the processed
- *     blob; otherwise upload the ORIGINAL file. Videos/non-images are NEVER
- *     preprocessed — their original bytes are uploaded byte-for-byte.
- *  4. Derive the FINAL contentType from the ACTUAL bytes uploaded (processed =>
- *     processed blob's type; else file.type) and use it BOTH in the handshake
- *     clientPayload AND in the returned result (for confirm).
+ *  3. ALWAYS upload the ORIGINAL bytes (media-transcoding, Req 2.1). Images are
+ *     still passed through `preprocessImage`, but ONLY to derive the non-blocking
+ *     BlurHash + intrinsic width/height for the placeholder/layout (Req 2.2);
+ *     the client no longer substitutes a compressed blob. The reduced display
+ *     version is produced server-side by the worker (image-derivative /
+ *     video-transcode), so the full-quality original is what reaches Blob and is
+ *     preserved for future WeTransfer delivery (Req 1.1). Videos/non-images were
+ *     already uploaded byte-for-byte.
+ *  4. Derive the FINAL contentType from the ORIGINAL file (`file.type`) and use
+ *     it BOTH in the handshake clientPayload AND in the returned result (for
+ *     confirm), since the uploaded bytes are always the original now.
  *  5. Build the canonical pathname via the shared `buildCanonicalPathname`, and
  *     send `filename: file.name` in the clientPayload so the server recomputes
  *     an identical pathname (Task 3.1 contract). Also forward the enqueue-time
@@ -151,43 +151,46 @@ export async function uploadToBlob(
 ): Promise<BlobUploadResult> {
     const { file, uploadId, eventSlug, eventId, date, creationTime, onProgress, signal } = args;
 
-    // 2 + 3. Determine the body to upload. Videos/non-images are uploaded
-    // byte-for-byte (the original File); images may be preprocessed.
-    let bodyToUpload: Blob = file;
-    let processed = false;
+    // 2 + 3. The body to upload is ALWAYS the original File (media-transcoding,
+    // Req 2.1). We never substitute a client-compressed blob anymore — the worker
+    // produces the reduced display derivative server-side and the original is
+    // preserved for future high-quality (WeTransfer) delivery.
+    const bodyToUpload: Blob = file;
+    // `processed` stays false: the uploaded bytes are the original. Kept as a
+    // constant so the returned result shape is unchanged for callers/confirm.
+    const processed = false;
     // Client BlurHash produced by preprocessImage from the decoded image pixels
-    // (Req 9). Non-blocking: preprocessImage returns null on any failure and for
-    // videos/non-images/skipped images. We thread whatever it produced into the
-    // result so confirm can persist it; if the caller ALSO supplied a blurhash
-    // via args, the preprocess value takes precedence when present.
+    // (Req 2.2). Non-blocking: preprocessImage returns null on any failure and
+    // for videos/non-images. We thread whatever it produced into the result so
+    // confirm can persist it; if the caller ALSO supplied a blurhash via args,
+    // the preprocess value takes precedence when present.
     let preprocessBlurhash: string | null = null;
-    // Intrinsic pixel dimensions from preprocessing (Req: masonry layout). Like
-    // blurhash these are non-blocking: preprocessImage returns them for images it
-    // decoded (even when it kept the original bytes), and 0/unknown otherwise. We
-    // thread whatever it produced into the result so confirm can persist them.
+    // Intrinsic pixel dimensions from preprocessing (masonry layout, Req 2.2).
+    // Like blurhash these are non-blocking: preprocessImage returns them for
+    // images it decoded, and 0/unknown otherwise.
     let preprocessWidth = 0;
     let preprocessHeight = 0;
 
     if (isImageFile(file)) {
-        const pre = await preprocessImage(file, args.preprocessOptions);
-        preprocessBlurhash = pre.blurhash;
-        preprocessWidth = pre.width;
-        preprocessHeight = pre.height;
-        if (pre.processed) {
-            bodyToUpload = pre.blob;
-            processed = true;
-        }
-        // If not processed, preprocessImage returned the original file untouched.
+        // Measure the image (blurhash + intrinsic width/height) WITHOUT
+        // compressing it (Req 2.1/2.2). measureImage decodes once, computes the
+        // placeholder metadata, and never re-encodes or mutates the File; it is
+        // fully non-blocking and returns zero/null on any failure (Req 2.3).
+        const measured = await measureImage(file);
+        preprocessBlurhash = measured.blurhash;
+        preprocessWidth = measured.width;
+        preprocessHeight = measured.height;
     }
 
-    // 4. Final contentType reflects the ACTUAL bytes being uploaded. When the
-    // image was processed, preprocessImage may have fallen back to image/jpeg,
-    // so the processed blob's own type is authoritative. Otherwise the original
-    // file's type is used (videos and skipped images alike).
-    const finalContentType = processed ? bodyToUpload.type : file.type;
+    // 4. The uploaded bytes are always the original File now, so the final
+    // contentType is simply the original's type (media-transcoding, Req 2.1).
+    const finalContentType = file.type;
 
+    // originalSize === processedSize because no client-side compression happens;
+    // both are retained in the result shape for backward compatibility with
+    // callers/confirm that read processedSize.
     const originalSize = file.size;
-    const processedSize = processed ? bodyToUpload.size : file.size;
+    const processedSize = file.size;
 
     // 5. Build the server-controlled canonical pathname via the SHARED module so
     // it is byte-identical to what the handshake route recomputes. The

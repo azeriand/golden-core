@@ -130,27 +130,36 @@ function createMediaTableModel(opts: ModelOpts = {}): MediaTableModel {
         if (/FROM sections/i.test(sql)) {
             return { rows: [{ section_id: SECTION_ID }] };
         }
-        if (/INSERT INTO media/i.test(sql)) {
+        // Job enqueue (media-transcoding) is a queue write, not a media-row
+        // write, and only runs AFTER a successful media insert. Model it as a
+        // harmless no-op, checked BEFORE the media branch so it neither triggers
+        // the insertThrows failure path nor is misread by the media branch.
+        if (/INSERT INTO media_jobs/i.test(sql)) {
+            return { rows: [], rowCount: 1 };
+        }
+        if (/INSERT INTO media\b/i.test(sql)) {
             if (opts.insertThrows) {
                 // Genuine DB failure AFTER blob verified — carries internals.
                 throw new Error(DB_ERROR_MESSAGE);
             }
             const p = params ?? [];
-            const uploadId = p[9] as string;
+            // media-transcoding added original_url at index 1; upload_id is now
+            // the last param (index 10).
+            const uploadId = p[10] as string;
             if (byUploadId.has(uploadId)) {
                 return { rows: [] }; // conflict: inserted nothing
             }
             const row: MediaRow = {
                 media_id: nextMediaId++,
                 content: p[0] as string,
-                type: p[1] as string,
-                date: p[2] as string,
-                user_id: p[3] as number,
-                section_id: p[4] as number,
-                event_id: p[5] as number,
-                blurhash: (p[6] as string | null) ?? null,
-                width: (p[7] as number | null) ?? null,
-                height: (p[8] as number | null) ?? null,
+                type: p[2] as string,
+                date: p[3] as string,
+                user_id: p[4] as number,
+                section_id: p[5] as number,
+                event_id: p[6] as number,
+                blurhash: (p[7] as string | null) ?? null,
+                width: (p[8] as number | null) ?? null,
+                height: (p[9] as number | null) ?? null,
                 upload_id: uploadId,
             };
             byUploadId.set(uploadId, row);

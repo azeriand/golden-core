@@ -351,3 +351,64 @@ export async function preprocessImage(
         }
     }
 }
+
+/**
+ * Result of measuring an image: intrinsic pixel dimensions + a BlurHash, all
+ * derived from a single decode WITHOUT re-encoding or altering the file. Values
+ * are the graceful-failure defaults (0 / null) when the image cannot be decoded
+ * or the browser APIs are unavailable.
+ */
+export interface MeasureResult {
+    width: number; // 0 when unknown
+    height: number; // 0 when unknown
+    blurhash: string | null; // null when unavailable
+}
+
+/**
+ * Measure an image `File` for placeholder/layout metadata WITHOUT compressing
+ * it (media-transcoding, Req 2.2).
+ *
+ * Since the client now uploads ORIGINAL bytes (the worker produces the reduced
+ * display derivative server-side), the upload path no longer needs
+ * `preprocessImage`'s re-encoded blob — only its BlurHash + intrinsic
+ * width/height. This function decodes the image exactly ONCE (EXIF-oriented,
+ * matching preprocessImage) to compute those two things and nothing else:
+ *   - NO size-based skip: unlike preprocessImage, small images (< ~200KB) are
+ *     STILL measured, so every image keeps its BlurHash placeholder and real
+ *     dimensions for the masonry layout (this fixes the small-image regression
+ *     that a measure-via-preprocessImage would cause).
+ *   - NO canvas encode: the expensive toBlob step is skipped entirely, so
+ *     measuring is cheaper than the old compress path.
+ *   - NON-BLOCKING: ANY failure (no canvas, decode error, tainted canvas)
+ *     resolves to { width: 0, height: 0, blurhash: null } so the upload proceeds
+ *     unaffected (Req 2.3). Never throws. Never mutates `file`.
+ */
+export async function measureImage(file: File): Promise<MeasureResult> {
+    const empty: MeasureResult = { width: 0, height: 0, blurhash: null };
+
+    // Non-images have no dimensions/blurhash to measure.
+    if (!isImageFile(file)) return empty;
+    // Without the decode/canvas APIs we cannot measure; degrade gracefully.
+    if (!canPreprocess()) return empty;
+
+    let bitmap: ImageBitmap | null = null;
+    try {
+        // Decode with EXIF orientation baked in so width/height and the BlurHash
+        // reflect the upright image (matches preprocessImage's decode).
+        bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+        const width = bitmap.width;
+        const height = bitmap.height;
+        if (width <= 0 || height <= 0) return empty;
+
+        // BlurHash from the SAME decoded pixels; computeBlurhash never throws.
+        const blurhash = computeBlurhash(bitmap);
+        return { width, height, blurhash };
+    } catch {
+        // Any failure -> graceful empty result; the upload proceeds normally.
+        return empty;
+    } finally {
+        if (bitmap && typeof bitmap.close === 'function') {
+            bitmap.close();
+        }
+    }
+}

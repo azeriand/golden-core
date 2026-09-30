@@ -62,15 +62,17 @@ vi.mock('@vercel/blob', () => ({
 }));
 
 // Mock the enqueue helper so wiring tests observe whether/how the confirm route
-// calls it, without touching a real poster_jobs table. isVideoType stays REAL
-// (it is a pure predicate) so the video-vs-image gating is exercised end-to-end.
-vi.mock('@/lib/poster-jobs', async () => {
-    const actual = await vi.importActual<typeof import('@/lib/poster-jobs')>(
-        '@/lib/poster-jobs',
+// calls it, without touching a real media_jobs table. isVideoType/isImageType
+// stay REAL (pure predicates) so the video-vs-image kind gating is exercised
+// end-to-end. The route now calls enqueueMediaJob(pool, mediaId, kind) from
+// @/lib/media-jobs — videos enqueue 'poster' + 'video', images enqueue 'image'.
+vi.mock('@/lib/media-jobs', async () => {
+    const actual = await vi.importActual<typeof import('@/lib/media-jobs')>(
+        '@/lib/media-jobs',
     );
     return {
         ...actual,
-        enqueuePosterJob: (...args: unknown[]) => enqueueMock(...args),
+        enqueueMediaJob: (...args: unknown[]) => enqueueMock(...args),
     };
 });
 
@@ -395,8 +397,9 @@ describe('confirm route — idempotent insert', () => {
             /INSERT INTO media/i.test(c[0] as string),
         );
         const insertValues = insertCall![1] as unknown[];
-        // section_id is the 5th column in the INSERT (index 4).
-        expect(insertValues[4]).toBeNull();
+        // section_id is the 6th column in the INSERT (index 5); original_url was
+        // added at position 2 (index 1) as part of task 3.1.
+        expect(insertValues[5]).toBeNull();
 
         // With no creationTime the route never runs the section-match query.
         const sectionsQueried = queryMock.mock.calls.some((c) =>
@@ -424,7 +427,7 @@ describe('confirm route — idempotent insert', () => {
         const insertCall = queryMock.mock.calls.find((c) =>
             /INSERT INTO media/i.test(c[0] as string),
         );
-        expect((insertCall![1] as unknown[])[4]).toBe(SECTION_ID);
+        expect((insertCall![1] as unknown[])[5]).toBe(SECTION_ID);
     });
 
     it('leaves media unclassified when the creationTime matches no section', async () => {
@@ -438,7 +441,7 @@ describe('confirm route — idempotent insert', () => {
         const insertCall = queryMock.mock.calls.find((c) =>
             /INSERT INTO media/i.test(c[0] as string),
         );
-        expect((insertCall![1] as unknown[])[4]).toBeNull();
+        expect((insertCall![1] as unknown[])[5]).toBeNull();
     });
 
     it('rejects a malformed creationTime with 400 and no insert', async () => {
@@ -596,10 +599,14 @@ function videoBody(overrides: Record<string, unknown> = {}): Record<string, unkn
     });
 }
 
-describe('confirm route — poster-job enqueue wiring (Task 3)', () => {
-    // Req 3.1: a NEW video row (201) enqueues exactly one poster job for its
-    // media_id.
-    it('enqueues a poster job for a newly inserted video (201)', async () => {
+describe('confirm route — media-job enqueue wiring (Task 3)', () => {
+    /** Extract the `kind` argument (3rd positional) from each enqueue call. */
+    const enqueuedKinds = () =>
+        enqueueMock.mock.calls.map((c) => c[2] as string);
+
+    // Req 4.1 + 3.1: a NEW video row (201) enqueues BOTH 'poster' and 'video'
+    // jobs for its media_id — each an independent kind (Req 5.4).
+    it('enqueues poster + video jobs for a newly inserted video (201)', async () => {
         const insertedRow = {
             media_id: 42,
             upload_id: VALID_UUID,
@@ -615,13 +622,16 @@ describe('confirm route — poster-job enqueue wiring (Task 3)', () => {
         const res = await POST(makeRequest(videoBody()), params());
 
         expect(res.status).toBe(201);
-        expect(enqueueMock).toHaveBeenCalledTimes(1);
-        // Called with the shared pool and the row's media_id (video-only).
-        expect(enqueueMock.mock.calls[0][1]).toBe(42);
+        expect(enqueueMock).toHaveBeenCalledTimes(2);
+        // Both calls target the row's media_id.
+        expect(enqueueMock.mock.calls.every((c) => c[1] === 42)).toBe(true);
+        // The two kinds are exactly 'poster' and 'video'.
+        expect(new Set(enqueuedKinds())).toEqual(new Set(['poster', 'video']));
     });
 
-    // Req 3.2: an image row must NOT enqueue a poster job.
-    it('does NOT enqueue a poster job for a newly inserted image (201)', async () => {
+    // Req 3.1: a NEW image row (201) enqueues exactly one 'image' job and NO
+    // poster/video jobs.
+    it('enqueues a single image job for a newly inserted image (201)', async () => {
         const insertedRow = {
             media_id: 43,
             upload_id: VALID_UUID,
@@ -637,14 +647,16 @@ describe('confirm route — poster-job enqueue wiring (Task 3)', () => {
         const res = await POST(makeRequest(validBody()), params());
 
         expect(res.status).toBe(201);
-        expect(enqueueMock).not.toHaveBeenCalled();
+        expect(enqueueMock).toHaveBeenCalledTimes(1);
+        expect(enqueueMock.mock.calls[0][1]).toBe(43);
+        expect(enqueueMock.mock.calls[0][2]).toBe('image');
     });
 
-    // Req 3.3 + 5.1: the already-exists (200) branch enqueues for a video too,
-    // relying on the idempotent helper to avoid duplicates. The route calls
-    // enqueue exactly once; the ON CONFLICT DO NOTHING inside the helper is what
-    // guarantees no duplicate job.
-    it('enqueues (idempotently) on the already-exists branch for a video (200)', async () => {
+    // Req 3.6 + 4.6 + 5.1: the already-exists (200) branch enqueues for a video
+    // too, relying on the idempotent helper to avoid duplicates. The route calls
+    // enqueue once per kind; the ON CONFLICT (media_id, kind) DO NOTHING inside
+    // the helper is what guarantees no duplicate job.
+    it('enqueues poster + video (idempotently) on the already-exists branch for a video (200)', async () => {
         const existingRow = {
             media_id: 77,
             upload_id: VALID_UUID,
@@ -662,12 +674,13 @@ describe('confirm route — poster-job enqueue wiring (Task 3)', () => {
         const res = await POST(makeRequest(videoBody()), params());
 
         expect(res.status).toBe(200);
-        expect(enqueueMock).toHaveBeenCalledTimes(1);
-        expect(enqueueMock.mock.calls[0][1]).toBe(77);
+        expect(enqueueMock).toHaveBeenCalledTimes(2);
+        expect(enqueueMock.mock.calls.every((c) => c[1] === 77)).toBe(true);
+        expect(new Set(enqueuedKinds())).toEqual(new Set(['poster', 'video']));
     });
 
-    // Req 3.2 on the 200 branch: an existing image row does not enqueue.
-    it('does NOT enqueue on the already-exists branch for an image (200)', async () => {
+    // Req 3.1 on the 200 branch: an existing image row enqueues its image job.
+    it('enqueues an image job on the already-exists branch for an image (200)', async () => {
         const existingRow = {
             media_id: 78,
             upload_id: VALID_UUID,
@@ -678,17 +691,21 @@ describe('confirm route — poster-job enqueue wiring (Task 3)', () => {
             section_id: SECTION_ID,
             blurhash: null,
         };
+        enqueueMock.mockResolvedValue(false);
         planQueries({ insert: [], existing: [existingRow] });
 
         const res = await POST(makeRequest(validBody()), params());
 
         expect(res.status).toBe(200);
-        expect(enqueueMock).not.toHaveBeenCalled();
+        expect(enqueueMock).toHaveBeenCalledTimes(1);
+        expect(enqueueMock.mock.calls[0][1]).toBe(78);
+        expect(enqueueMock.mock.calls[0][2]).toBe('image');
     });
 
-    // Req 3.5: a thrown enqueue error is swallowed — media creation already
-    // succeeded, so the successful media response is STILL returned.
-    it('swallows an enqueue error and still returns the successful media response (201)', async () => {
+    // Req 3.5 + 5.4: a thrown enqueue error for one kind is swallowed AND does
+    // not skip the other kind — media creation already succeeded, so the
+    // successful media response is STILL returned, and both kinds are attempted.
+    it('swallows a per-kind enqueue error, still attempts the other kind, and returns 201', async () => {
         const insertedRow = {
             media_id: 99,
             upload_id: VALID_UUID,
@@ -700,9 +717,12 @@ describe('confirm route — poster-job enqueue wiring (Task 3)', () => {
             blurhash: null,
         };
         planQueries({ insert: [insertedRow] });
+        // First kind ('poster') throws; the second kind ('video') must still be
+        // attempted and the response must still succeed.
         enqueueMock.mockRejectedValueOnce(
-            new Error('poster_jobs enqueue: connection refused at 10.0.0.1'),
+            new Error('media_jobs enqueue: connection refused at 10.0.0.1'),
         );
+        enqueueMock.mockResolvedValueOnce(true);
         // Silence the expected server-side error log for a clean test run.
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -712,8 +732,9 @@ describe('confirm route — poster-job enqueue wiring (Task 3)', () => {
         expect(res.status).toBe(201);
         const body = await res.json();
         expect(body).toMatchObject({ media_id: 99, type: 'video/mp4' });
-        // The enqueue was attempted (and threw), but the response still returned.
-        expect(enqueueMock).toHaveBeenCalledTimes(1);
+        // BOTH kinds were attempted even though the first threw (Req 5.4).
+        expect(enqueueMock).toHaveBeenCalledTimes(2);
+        expect(new Set(enqueuedKinds())).toEqual(new Set(['poster', 'video']));
         // Blob cleanup must NOT run — media was persisted; only enqueue failed.
         expect(delMock).not.toHaveBeenCalled();
 

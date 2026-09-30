@@ -29,7 +29,7 @@ import type { Pool } from 'pg';
 import { enqueuePosterJob, isVideoType } from '@/lib/poster-jobs';
 
 // --- In-memory poster_jobs fake executor -------------------------------------
-// Models `INSERT INTO poster_jobs (...) VALUES (...) ON CONFLICT (media_id) DO
+// Models `INSERT INTO media_jobs (...) VALUES (...) ON CONFLICT (media_id) DO
 // NOTHING`. The Map keyed by media_id is the analog of the UNIQUE index on
 // poster_jobs.media_id: a second insert for the same media_id inserts nothing
 // (rowCount 0). This is the ONLY SQL the real `enqueuePosterJob` issues, so a
@@ -48,7 +48,7 @@ function createPosterJobsModel(): PosterJobsModel {
     const byMediaId = new Map<number, { media_id: number; status: string; attempts: number }>();
 
     async function query(sql: string, params?: unknown[]) {
-        if (/INSERT INTO poster_jobs/i.test(sql)) {
+        if (/INSERT INTO media_jobs/i.test(sql)) {
             const mediaId = (params ?? [])[0] as number;
             // ON CONFLICT (media_id) DO NOTHING: only insert when absent.
             if (byMediaId.has(mediaId)) {

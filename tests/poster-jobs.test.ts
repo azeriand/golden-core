@@ -44,7 +44,7 @@ function fakePosterJobsExecutor(): {
     const state = { inserts: 0, conflicts: 0 };
 
     const query = async (sql: string, values?: unknown[]) => {
-        if (!/INSERT INTO poster_jobs/i.test(sql)) {
+        if (!/INSERT INTO media_jobs/i.test(sql)) {
             throw new Error(`Unexpected query in test: ${sql}`);
         }
         const mediaId = (values ?? [])[0] as number;

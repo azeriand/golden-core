@@ -36,7 +36,7 @@ import pool from '@/lib/db';
 import { verifyRequest } from '@/lib/auth';
 import { isDemoEvent, isDemoUser, demoGuardResponse } from '@/lib/demo-guard';
 import { resolveSectionIdByTime, isValidTimeOfDay } from '@/lib/section-match';
-import { enqueuePosterJob, isVideoType } from '@/lib/poster-jobs';
+import { enqueueMediaJob, isVideoType, isImageType } from '@/lib/media-jobs';
 
 export const runtime = 'nodejs';
 
@@ -45,7 +45,12 @@ export const runtime = 'nodejs';
 // app/api/event/[event-slug]/media/upload-token/route.ts. Do NOT invent new
 // limits — these must match current app behavior (Req 9, 7.9, 19.11/19.12).
 
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB (legacy MAX_FILE_SIZE)
+// System-overload guardrail, NOT a quality gate (media-transcoding, Req 7.1).
+// Raised from the legacy 100 MB because modern phone videos easily exceed that;
+// the app now preserves originals + transcodes a reduced display version, so the
+// cap only protects the system from absurd files. MUST stay in sync with the
+// upload-token handshake and the legacy media route (Req 7.2).
+const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2 GB overload guardrail
 
 // Upper bound for a persisted media dimension (px). Generous headroom over the
 // client preprocessing cap (maxEdge default 2000) so unprocessed originals still
@@ -296,41 +301,62 @@ function blobUrlBelongsToEvent(
 }
 
 /**
- * Enqueue a poster job for a just-created/confirmed VIDEO media row, video-only
- * and swallow-and-log on failure (design Component 3, Req 3.1/3.2/3.3/3.4/3.5).
+ * Enqueue the worker jobs a just-created/confirmed media row needs, keyed by the
+ * media kind, and swallow-and-log on failure (design Component 3, Req 3.1/4.1/5).
+ *
+ * Kind-aware enqueue policy (design Component 2 / Component 3):
+ *   - VIDEO row  -> enqueue 'poster' (unchanged existing behavior) AND 'video'
+ *     (new transcode). Each is an independent job so a failure of one never
+ *     blocks the other (Req 4.1, 5.4).
+ *   - IMAGE row  -> enqueue 'image' (new display-derivative job) (Req 3.1).
+ *   - unknown type -> enqueue nothing.
  *
  * Runs on BOTH the newly-inserted (201) and already-exists (200) branches so a
- * video always converges on exactly one poster job — the enqueue itself is
- * idempotent (unique index on poster_jobs.media_id + ON CONFLICT DO NOTHING),
- * so re-running across the two branches never duplicates a job (Req 3.3, 5.1).
+ * media row always converges on exactly one job PER KIND — every enqueue is
+ * idempotent (unique index on media_jobs(media_id, kind) + ON CONFLICT DO
+ * NOTHING), so re-running across the two branches never duplicates a job
+ * (Req 3.6, 4.6, 5.1, 5.2).
  *
  * CRITICAL: media creation has ALREADY succeeded and been committed by the time
  * this runs. An enqueue failure must NEVER fail the media response, so a genuine
- * DB error is caught, logged with non-secret context only (media_id + message),
- * and swallowed — the media response still returns (Req 3.5). A later webhook
- * retry or the one-time backfill can still create the job for such a row.
+ * DB error is caught per kind, logged with non-secret context only (media_id +
+ * kind + message), and swallowed — the media response still returns (Req 3.5).
+ * A later webhook retry or the one-time backfill can still create the job. Each
+ * kind is enqueued independently so one kind's failure does not skip the others.
  *
- * Only videos get a poster job; image rows are left untouched (Req 3.2). The
- * `type` column is the LIVE MIME string (e.g. 'video/mp4'); isVideoType is the
- * single shared source of truth for "is this a video?".
+ * The `type` column is the LIVE MIME string (e.g. 'video/mp4' / 'image/jpeg');
+ * isVideoType/isImageType are the single shared source of truth.
  */
-async function enqueuePosterJobForVideo(row: {
+async function enqueueDerivativeJobs(row: {
     media_id: number;
     type: string | null;
 }): Promise<void> {
-    if (!isVideoType(row.type)) return; // image (or unknown) -> no poster job.
-    try {
-        await enqueuePosterJob(pool, row.media_id);
-    } catch (enqueueError) {
-        // Non-secret context only (media_id + message); never DATABASE_URL /
-        // BLOB_READ_WRITE_TOKEN. Swallow: the media response must still succeed.
-        console.error(
-            'confirm: poster-job enqueue failed (media persisted, response still returned)',
-            'media_id',
-            row.media_id,
-            'error',
-            enqueueError instanceof Error ? enqueueError.message : String(enqueueError),
-        );
+    // Determine the kinds this row needs, in a deterministic order.
+    const kinds: Array<'poster' | 'image' | 'video'> = isVideoType(row.type)
+        ? ['poster', 'video']
+        : isImageType(row.type)
+          ? ['image']
+          : []; // unknown type -> nothing to enqueue.
+
+    // Enqueue each kind independently: one kind's failure must not skip another
+    // (Req 5.4). Every enqueue is idempotent via ON CONFLICT (media_id, kind).
+    for (const kind of kinds) {
+        try {
+            await enqueueMediaJob(pool, row.media_id, kind);
+        } catch (enqueueError) {
+            // Non-secret context only (media_id + kind + message); never
+            // DATABASE_URL / BLOB_READ_WRITE_TOKEN. Swallow: the media response
+            // must still succeed (Req 3.5).
+            console.error(
+                'confirm: media-job enqueue failed (media persisted, response still returned)',
+                'media_id',
+                row.media_id,
+                'kind',
+                kind,
+                'error',
+                enqueueError instanceof Error ? enqueueError.message : String(enqueueError),
+            );
+        }
     }
 }
 
@@ -442,12 +468,13 @@ export async function POST(
     // SELECT-then-INSERT primary path.
     try {
         const insertResult = await pool.query(
-            `INSERT INTO media (content, type, date, user_id, section_id, event_id, blurhash, width, height, upload_id)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            `INSERT INTO media (content, original_url, type, date, user_id, section_id, event_id, blurhash, width, height, upload_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
              ON CONFLICT (upload_id) WHERE upload_id IS NOT NULL DO NOTHING
              RETURNING *`,
             [
-                body.blobUrl,
+                body.blobUrl,       // content = original at creation; worker rewrites to derivative later
+                body.blobUrl,       // original_url = same Blob URL; never overwritten (Req 1.2, 1.3)
                 body.contentType,
                 body.date,
                 user.userId,
@@ -462,12 +489,13 @@ export async function POST(
 
         if (insertResult.rows.length > 0) {
             // Newly inserted row. Shape the response first (media creation is
-            // done), then enqueue a poster job for videos only — swallow-and-log
-            // so an enqueue failure never fails the media response (Req 3.1,
-            // 3.2, 3.4, 3.5).
+            // done), then enqueue the worker jobs this media kind needs — videos
+            // get poster + video transcode, images get an image derivative —
+            // swallow-and-log so an enqueue failure never fails the media
+            // response (Req 3.1, 3.5, 4.1, 5).
             const insertedRow = insertResult.rows[0];
             const shaped = await shapeMediaRow(insertedRow, user.userId);
-            await enqueuePosterJobForVideo(insertedRow);
+            await enqueueDerivativeJobs(insertedRow);
             return Response.json(shaped, { status: 201 });
         }
 
@@ -516,12 +544,13 @@ export async function POST(
                     existingRow = updated.rows[0];
                 }
             }
-            // Already-exists branch: ensure a poster job exists for this video
-            // without creating a duplicate (the enqueue is idempotent). Runs on
-            // the 200 path so a video confirmed after the webhook (or a repeated
-            // confirm) still converges on exactly one job (Req 3.3, 5.1).
+            // Already-exists branch: ensure the per-kind jobs exist for this
+            // media row without creating duplicates (each enqueue is idempotent
+            // via ON CONFLICT (media_id, kind)). Runs on the 200 path so a row
+            // confirmed after the webhook (or a repeated confirm) still converges
+            // on exactly one job per kind (Req 3.6, 4.6, 5.1, 5.2).
             const shaped = await shapeMediaRow(existingRow, user.userId);
-            await enqueuePosterJobForVideo(existingRow);
+            await enqueueDerivativeJobs(existingRow);
             return Response.json(shaped, { status: 200 });
         }
 

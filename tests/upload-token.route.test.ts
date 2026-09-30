@@ -70,15 +70,16 @@ vi.mock('@vercel/blob/client', () => ({
     handleUpload: (...args: unknown[]) => handleUploadMock(...args),
 }));
 
-// Mock enqueuePosterJob (the boundary under test) but keep the REAL isVideoType
-// so the video-only gate is genuinely exercised.
-vi.mock('@/lib/poster-jobs', async () => {
-    const actual = await vi.importActual<typeof import('@/lib/poster-jobs')>(
-        '@/lib/poster-jobs',
+// Mock enqueueMediaJob (the boundary under test) but keep the REAL
+// isVideoType/isImageType so the kind gate is genuinely exercised. The webhook
+// now enqueues 'poster' + 'video' for videos and 'image' for images.
+vi.mock('@/lib/media-jobs', async () => {
+    const actual = await vi.importActual<typeof import('@/lib/media-jobs')>(
+        '@/lib/media-jobs',
     );
     return {
         ...actual,
-        enqueuePosterJob: (...args: unknown[]) => enqueueMock(...args),
+        enqueueMediaJob: (...args: unknown[]) => enqueueMock(...args),
     };
 });
 
@@ -203,17 +204,19 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-describe('webhook path — poster enqueue on video insert (Req 4.1)', () => {
-    it('enqueues exactly one poster job when a video row is freshly inserted', async () => {
+describe('webhook path — job enqueue on video insert (Req 4.1)', () => {
+    it('enqueues poster + video jobs when a video row is freshly inserted', async () => {
         planQueries({ insertedRowCount: 1, mediaRows: [{ media_id: MEDIA_ID }] });
         driveWebhook('video/mp4');
 
         const res = await POST(makeRequest(), params());
 
         expect(res.status).toBe(200);
-        // Enqueued exactly once, against the resolved media_id.
-        expect(enqueueMock).toHaveBeenCalledTimes(1);
-        expect(enqueueMock.mock.calls[0][1]).toBe(MEDIA_ID);
+        // Enqueued twice (poster + video), both against the resolved media_id.
+        expect(enqueueMock).toHaveBeenCalledTimes(2);
+        expect(enqueueMock.mock.calls.every((c) => c[1] === MEDIA_ID)).toBe(true);
+        const kinds = enqueueMock.mock.calls.map((c) => c[2]);
+        expect(new Set(kinds)).toEqual(new Set(['poster', 'video']));
         // The media_id was resolved via SELECT ... WHERE upload_id.
         const selectCall = queryMock.mock.calls.find((c) =>
             /SELECT media_id FROM media/i.test(c[0] as string),
@@ -223,8 +226,8 @@ describe('webhook path — poster enqueue on video insert (Req 4.1)', () => {
     });
 });
 
-describe('webhook path — poster enqueue on no-op branch (Req 4.2)', () => {
-    it('enqueues exactly one poster job when the video row already existed (ON CONFLICT no-op)', async () => {
+describe('webhook path — job enqueue on no-op branch (Req 4.2)', () => {
+    it('enqueues poster + video when the video row already existed (ON CONFLICT no-op)', async () => {
         // insertedRowCount 0 => confirm won the race; the row already exists and
         // enqueue must still run against the media_id resolved by SELECT.
         planQueries({ insertedRowCount: 0, mediaRows: [{ media_id: MEDIA_ID }] });
@@ -233,25 +236,26 @@ describe('webhook path — poster enqueue on no-op branch (Req 4.2)', () => {
         const res = await POST(makeRequest(), params());
 
         expect(res.status).toBe(200);
-        expect(enqueueMock).toHaveBeenCalledTimes(1);
-        expect(enqueueMock.mock.calls[0][1]).toBe(MEDIA_ID);
+        expect(enqueueMock).toHaveBeenCalledTimes(2);
+        expect(enqueueMock.mock.calls.every((c) => c[1] === MEDIA_ID)).toBe(true);
+        expect(new Set(enqueueMock.mock.calls.map((c) => c[2]))).toEqual(
+            new Set(['poster', 'video']),
+        );
     });
 });
 
-describe('webhook path — image content does not enqueue (Req 4.3)', () => {
-    it('never enqueues a poster job for an image upload', async () => {
-        planQueries({ insertedRowCount: 1 });
+describe('webhook path — image content enqueues an image job (Req 3.1)', () => {
+    it('enqueues a single image job for an image upload (no poster/video)', async () => {
+        planQueries({ insertedRowCount: 1, mediaRows: [{ media_id: MEDIA_ID }] });
         driveWebhook('image/jpeg');
 
         const res = await POST(makeRequest(), params());
 
         expect(res.status).toBe(200);
-        expect(enqueueMock).not.toHaveBeenCalled();
-        // For an image, the media_id resolution SELECT is never even run.
-        const selectCalled = queryMock.mock.calls.some((c) =>
-            /SELECT media_id FROM media/i.test(c[0] as string),
-        );
-        expect(selectCalled).toBe(false);
+        // Exactly one enqueue, of kind 'image', against the resolved media_id.
+        expect(enqueueMock).toHaveBeenCalledTimes(1);
+        expect(enqueueMock.mock.calls[0][1]).toBe(MEDIA_ID);
+        expect(enqueueMock.mock.calls[0][2]).toBe('image');
     });
 });
 
@@ -288,7 +292,10 @@ describe('webhook path — transient enqueue error is retryable (Req 4.4)', () =
         // The route surfaces the thrown handleUpload failure; the essential
         // behavior (enqueue error propagated, not swallowed) is asserted above.
         expect(res.status).toBe(400);
-        expect(enqueueMock).toHaveBeenCalledTimes(1);
+        // For a video the route attempts BOTH kinds (poster + video) even when
+        // the first throws, collecting the first error and rethrowing after —
+        // so the enqueue boundary is called twice (Req 5.4, 4.4).
+        expect(enqueueMock).toHaveBeenCalledTimes(2);
     });
 
     it('rethrows a transient media_id-resolution DB error so the webhook is retried', async () => {

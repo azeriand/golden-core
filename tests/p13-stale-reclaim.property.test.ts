@@ -14,7 +14,7 @@
 //   semantics of the reclaim UPDATE as an IN-MEMORY reference. The ONLY statement
 //   the real helper issues is:
 //
-//       UPDATE poster_jobs
+//       UPDATE media_jobs
 //       SET status = 'pending', updated_at = now()
 //       WHERE status = 'processing'
 //         AND updated_at < now() - ($1 * interval '1 second')
@@ -81,7 +81,7 @@ function createPosterJobsModel(seed: JobRow[], nowMs: number): PosterJobsModel {
         params?: unknown[],
     ): Promise<{ rows: never[]; rowCount: number }> => {
         if (
-            /UPDATE poster_jobs/i.test(sql) &&
+            /UPDATE media_jobs/i.test(sql) &&
             /status = 'processing'/i.test(sql) &&
             /interval '1 second'/i.test(sql)
         ) {

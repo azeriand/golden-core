@@ -157,6 +157,11 @@ const BASE_CONFIG: WorkerConfig = {
     staleProcessingSeconds: 300,
     maxDimension: 640,
     backoffBaseSeconds: 5,
+    imageMaxDimension: 2000,
+    imageQuality: 80,
+    videoMaxHeight: 1080,
+    videoCrf: 23,
+    videoPreset: 'veryfast',
 };
 
 // A valid-shaped frame used ONLY by the upload-failure scenario (extraction
@@ -303,6 +308,7 @@ describe('P15 — failure never overwrites poster_url', () => {
                     const job: PosterJob = {
                         id: e.id,
                         media_id: e.media_id,
+                        kind: 'poster',
                         status: 'processing',
                         attempts: e.attempts,
                         run_after: new Date().toISOString(),
@@ -380,6 +386,7 @@ describe('P15 — failure never overwrites poster_url', () => {
                             {
                                 id: 1,
                                 media_id: 1,
+                                kind: 'poster',
                                 status: 'processing',
                                 attempts: attemptsBefore,
                                 run_after: new Date().toISOString(),
@@ -424,6 +431,7 @@ describe('P15 — failure never overwrites poster_url', () => {
                         {
                             id: 2,
                             media_id: 2,
+                            kind: 'poster',
                             status: 'processing',
                             attempts: 0,
                             run_after: new Date().toISOString(),

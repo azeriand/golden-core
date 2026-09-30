@@ -12,7 +12,7 @@
 //   its SQL contract, so we model `public.poster_jobs` and the exact semantics
 //   of the failJob UPDATE as an IN-MEMORY reference:
 //
-//       UPDATE poster_jobs
+//       UPDATE media_jobs
 //       SET attempts = attempts + 1,
 //           status = CASE WHEN attempts + 1 >= $2 THEN 'failed' ELSE 'pending' END,
 //           run_after = CASE WHEN attempts + 1 >= $2
@@ -75,7 +75,7 @@ function createPosterJobsModel(initial: JobRow[]): PosterJobsModel {
     const log: QueryLog[] = [];
 
     async function query(sql: string, params?: unknown[]) {
-        if (/UPDATE poster_jobs/i.test(sql) && /attempts = attempts \+ 1/i.test(sql)) {
+        if (/UPDATE media_jobs/i.test(sql) && /attempts = attempts \+ 1/i.test(sql)) {
             const id = (params ?? [])[0] as number;
             const maxAttempts = (params ?? [])[1] as number;
             const backoffBaseSeconds = (params ?? [])[2] as number;

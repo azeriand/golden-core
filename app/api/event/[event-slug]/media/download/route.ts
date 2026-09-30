@@ -41,6 +41,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             `SELECT
                 media_id,
                 content,
+                original_url,
                 type
             FROM media
             WHERE media_id = ANY($1::int[])
@@ -59,7 +60,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
         const files = await Promise.all(
             mediaResult.rows.map(async (media) => {
-                const response = await fetch(media.content);
+                // Download the PRESERVED ORIGINAL when available (media-transcoding):
+                // downloads should deliver full quality, not the reduced display
+                // derivative that `content` may point at. original_url is null on
+                // legacy rows, where `content` is the only version. This is also
+                // the source a future WeTransfer export would use.
+                const downloadUrl = media.original_url ?? media.content;
+                const response = await fetch(downloadUrl);
 
                 if (!response.ok) {
                     throw new Error(

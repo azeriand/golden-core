@@ -14,7 +14,7 @@
 //
 // The failJob SQL (worker/src/queue.ts) is:
 //
-//   UPDATE poster_jobs
+//   UPDATE media_jobs
 //   SET attempts = attempts + 1,
 //       status = CASE WHEN attempts + 1 >= $2 THEN 'failed' ELSE 'pending' END,
 //       run_after = CASE WHEN attempts + 1 >= $2
@@ -71,7 +71,7 @@ function fakeFailJobExecutor(initial: JobRow): {
     let lastNow = 0;
 
     const query = async (sql: string, values?: unknown[]) => {
-        if (!/UPDATE poster_jobs/i.test(sql) || !/attempts = attempts \+ 1/i.test(sql)) {
+        if (!/UPDATE media_jobs/i.test(sql) || !/attempts = attempts \+ 1/i.test(sql)) {
             throw new Error(`Unexpected query in failjob-backoff test: ${sql}`);
         }
         const id = (values ?? [])[0] as number;

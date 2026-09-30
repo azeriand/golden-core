@@ -83,7 +83,10 @@ function createPosterJobsModel(seed: JobRow[], nowMs: number): PosterJobsModel {
         sql: string,
         params?: unknown[],
     ): Promise<{ rowCount: number; rows: PosterJob[] }> {
-        if (/UPDATE poster_jobs/i.test(sql) && /SKIP LOCKED/i.test(sql)) {
+        // The queue table was generalised from poster_jobs to media_jobs
+        // (media-transcoding); accept either name so this claim model tracks the
+        // real claimJobs SQL.
+        if (/UPDATE (poster_jobs|media_jobs)/i.test(sql) && /SKIP LOCKED/i.test(sql)) {
             const limit = (params ?? [])[0] as number;
 
             // 1) SELECT id FROM poster_jobs
@@ -110,6 +113,7 @@ function createPosterJobsModel(seed: JobRow[], nowMs: number): PosterJobsModel {
                 claimed.push({
                     id: r.id,
                     media_id: r.media_id,
+                    kind: 'poster',
                     status: r.status,
                     attempts: r.attempts,
                     run_after: new Date(r.run_after_ms).toISOString(),

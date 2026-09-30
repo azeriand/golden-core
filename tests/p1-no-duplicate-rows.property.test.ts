@@ -118,24 +118,33 @@ function createMediaTableModel(): MediaTableModel {
         if (/FROM sections/i.test(sql)) {
             return { rows: [{ section_id: SECTION_ID }] };
         }
+        // 2b. Job enqueue (media-transcoding): the confirm route now enqueues
+        //     per-kind media_jobs after creating a media row. This is a queue
+        //     write, NOT a media-row write, so model it as a harmless no-op and
+        //     check it BEFORE the media branch (whose substring would otherwise
+        //     misinterpret it).
+        if (/INSERT INTO media_jobs/i.test(sql)) {
+            return { rows: [], rowCount: 1 };
+        }
         // 3. INSERT ... ON CONFLICT (upload_id) DO NOTHING RETURNING *
         //    THIS IS THE CRUX: a single, synchronous, ATOMIC check-and-insert.
-        //    The parameter order in the route is:
-        //    [content, type, date, user_id, section_id, event_id, blurhash,
-        //     width, height, upload_id]
-        //    so upload_id is the LAST param (index 9).
-        if (/INSERT INTO media/i.test(sql)) {
+        //    The parameter order in the route is (media-transcoding added
+        //    original_url at index 1):
+        //    [content, original_url, type, date, user_id, section_id, event_id,
+        //     blurhash, width, height, upload_id]
+        //    so upload_id is the LAST param (index 10).
+        if (/INSERT INTO media\b/i.test(sql)) {
             const p = params ?? [];
             const content = p[0] as string;
-            const type = p[1] as string;
-            const date = p[2] as string;
-            const userId = p[3] as number;
-            const sectionId = p[4] as number;
-            const eventId = p[5] as number;
-            const blurhash = (p[6] as string | null) ?? null;
-            const width = (p[7] as number | null) ?? null;
-            const height = (p[8] as number | null) ?? null;
-            const uploadId = p[9] as string;
+            const type = p[2] as string;
+            const date = p[3] as string;
+            const userId = p[4] as number;
+            const sectionId = p[5] as number;
+            const eventId = p[6] as number;
+            const blurhash = (p[7] as string | null) ?? null;
+            const width = (p[8] as number | null) ?? null;
+            const height = (p[9] as number | null) ?? null;
+            const uploadId = p[10] as string;
 
             // Atomic: if a row already exists for this upload_id, the unique
             // index rejects the insert -> ON CONFLICT DO NOTHING -> zero rows

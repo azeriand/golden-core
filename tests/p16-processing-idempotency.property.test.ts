@@ -152,6 +152,11 @@ const BASE_CONFIG: WorkerConfig = {
     staleProcessingSeconds: 300,
     maxDimension: 640,
     backoffBaseSeconds: 5,
+    imageMaxDimension: 2000,
+    imageQuality: 80,
+    videoMaxHeight: 1080,
+    videoCrf: 23,
+    videoPreset: 'veryfast',
 };
 
 // Deps whose effectful boundaries THROW if invoked. On the idempotent re-run
@@ -251,6 +256,7 @@ describe('P16 — processing idempotency (re-run safety)', () => {
                     const job: PosterJob = {
                         id: e.id,
                         media_id: e.media_id,
+                        kind: 'poster',
                         status: 'processing',
                         attempts: e.attempts,
                         run_after: new Date().toISOString(),
@@ -312,6 +318,7 @@ describe('P16 — processing idempotency (re-run safety)', () => {
                             {
                                 id: 1,
                                 media_id,
+                                kind: 'poster',
                                 status: 'processing',
                                 attempts: 0,
                                 run_after: new Date().toISOString(),
