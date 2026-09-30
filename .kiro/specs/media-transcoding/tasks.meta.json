@@ -1,0 +1,309 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Migration `006_media_jobs_and_original_url.sql`": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711031974
+      },
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711042310
+      },
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790758182457
+      }
+    ],
+    "2.1 Implement `enqueueMediaJob(db, mediaId, kind)` with `ON CONFLICT (media_id, kind) DO NOTHING`; add `isVideoType`/`isImageType`.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032021
+      },
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790758187923
+      },
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790758362096
+      }
+    ],
+    "2.2 Keep `lib/poster-jobs.ts` working (shim/re-export or update callers) so nothing breaks.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032074
+      },
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790758367257
+      },
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790758566724
+      }
+    ],
+    "2.3 Property tests: exactly one job per `(media_id, kind)` (P1); kinds independent (P2).": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032109
+      },
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790758571694
+      },
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790759214609
+      }
+    ],
+    "3.1 Add `original_url` to the INSERT (set to the uploaded original's Blob URL; `content` also = original at creation).": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032174
+      },
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790759219825
+      }
+    ],
+    "3.2 Enqueue `image` for images; `poster` + `video` for videos. Confirm swallows-and-logs enqueue errors; webhook rethrows (unchanged policy).": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032209
+      }
+    ],
+    "3.3 Preserve auth, demo guard, blob-namespace verification, orphan cleanup, idempotency.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032242
+      }
+    ],
+    "3.4 Route tests for both paths (create, idempotent repeat, correct kinds).": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032275
+      }
+    ],
+    "4.1 Extract existing poster logic into `processPosterJob`; add a `switch (job.kind)` dispatcher in `process-job.ts`; thread `kind` through `queue.ts` claim/types.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032309
+      }
+    ],
+    "4.2 Keep shared machinery (claim, complete, fail/backoff, reclaim, bounded concurrency, logging) untouched; keep injectable deps.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032343
+      }
+    ],
+    "4.3 Ensure existing poster tests pass unchanged.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032375
+      }
+    ],
+    "5.1 Fetch original, `sharp` resize to `IMAGE_MAX_DIMENSION` (fit inside, no enlargement), re-encode at `IMAGE_QUALITY`; upload `derivatives/{media_id}/image.<ext>`.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032408
+      }
+    ],
+    "5.2 `UPDATE media SET content = <derivative>` only after successful upload; if not smaller than original, keep original as `content` and still complete.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032442
+      }
+    ],
+    "5.3 Idempotent re-run when `content` already in the derivative namespace (P4).": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032474
+      }
+    ],
+    "5.4 Unit/property tests (sizing, never-enlarge, atomic write P3, idempotency P4).": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032509
+      }
+    ],
+    "6.1 ffmpeg transcode original → H.264/AAC MP4 capped at `VIDEO_MAX_HEIGHT` with `VIDEO_CRF`/`VIDEO_PRESET`; upload `derivatives/{media_id}/video.mp4`.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032541
+      }
+    ],
+    "6.2 `UPDATE media SET content = <derivative>` only after successful upload; on permanent failure leave `content` = original (fallback).": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032575
+      }
+    ],
+    "6.3 Idempotent re-run when `content` already in the derivative namespace (P4); failures never crash the loop.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032630
+      }
+    ],
+    "6.4 Add worker config (`IMAGE_MAX_DIMENSION`, `IMAGE_QUALITY`, `VIDEO_MAX_HEIGHT`, `VIDEO_CRF`/`VIDEO_BITRATE`, `VIDEO_PRESET`) with defaults in `config.ts`.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032665
+      }
+    ],
+    "6.5 Unit/integration tests (success, failure→fallback, idempotency, secret-free logging).": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032704
+      }
+    ],
+    "7.1 Upload the original `File` bytes; keep BlurHash + width/height measurement without substituting uploaded bytes.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032740
+      }
+    ],
+    "7.2 Preserve concurrency cap, retries, IndexedDB resume, `upload_id` idempotency.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032775
+      }
+    ],
+    "7.3 Update/trim `lib/image-preprocess.ts` to \"measure + blurhash only\" (or bypass its processed blob in the wrapper).": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032808
+      }
+    ],
+    "8.1 Add `original_url: string | null` to `app/dto/media.ts`.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032841
+      }
+    ],
+    "8.2 Add `media.original_url` to the event GET SELECT and DTO mapping.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032875
+      }
+    ],
+    "9.1 Confirm images render `content` (original until derivative, then derivative) through existing `next/image`/blurhash path — no URL branching needed.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032908
+      }
+    ],
+    "9.2 Confirm video poster fallback + `preload=\"none\"` playback of `content` unchanged.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032942
+      }
+    ],
+    "9.3 Point the download route (and future WeTransfer hook) to prefer `original_url` when present, else `content`.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711032974
+      }
+    ],
+    "10.1 Raise `MAX_FILE_SIZE` to the guardrail (2 GB) in client, upload-token `maximumSizeInBytes`, and confirm; keep in sync.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711033012
+      }
+    ],
+    "10.2 Surface a clear over-limit message client-side; keep content-type validation intact.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711033059
+      }
+    ],
+    "11.1 Verify legacy rows (`original_url IS NULL`) render by serving existing `content` (P6).": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711033092
+      }
+    ],
+    "11.2 Extend/add idempotent backfill to enqueue `image`/`video` jobs for existing media without duplicating jobs; poster backfill unaffected.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711033124
+      }
+    ],
+    "12.1 Run app build/lint/tests and worker build/tests; fix failures.": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711033159
+      }
+    ],
+    "12.2 Confirm migration applies and rolls back cleanly on a scratch DB (or documents the manual step if no DB available).": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711033191
+      }
+    ],
+    "13. Cost re-estimation (owner-requested)": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711033225
+      }
+    ],
+    "14. Open PR": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790711033259
+      }
+    ],
+    "2. Generalize enqueue helper `lib/media-jobs.ts`": [
+      {
+        "executionId": "7f331813-bc30-472e-8f4f-f1e9f57fad70",
+        "chatSessionId": "sess_2a95da8a-9f12-420d-8a0b-edf0cc41b779",
+        "timestamp": 1790759214688
+      }
+    ]
+  }
+}

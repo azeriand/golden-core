@@ -60,12 +60,12 @@ function createPosterJobsModel(): PosterJobsModel {
         sql: string,
         params?: unknown[],
     ): Promise<{ rowCount: number; rows: PosterJobRow[] }> {
-        // INSERT INTO poster_jobs (...) VALUES (...) ON CONFLICT (media_id) DO NOTHING
+        // INSERT INTO media_jobs (...) VALUES (...) ON CONFLICT (media_id) DO NOTHING
         // THE CRUX: a single, synchronous, ATOMIC check-and-insert keyed by
         // media_id. There is NO separate "SELECT existence then INSERT" — the
         // decision is indivisible, exactly like Postgres enforcing the unique
         // index poster_jobs_media_id_key.
-        if (/INSERT INTO poster_jobs/i.test(sql)) {
+        if (/INSERT INTO media_jobs/i.test(sql)) {
             const mediaId = (params ?? [])[0] as number;
             if (byMediaId.has(mediaId)) {
                 // Conflict: the unique index rejects the insert -> DO NOTHING ->

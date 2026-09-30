@@ -105,22 +105,29 @@ function createMediaTableModel(): MediaTableModel {
     async function query(sql: string, params?: unknown[]): Promise<unknown> {
         if (/FROM events/i.test(sql)) return { rows: [{ event_id: EVENT_ID }] };
         if (/FROM sections/i.test(sql)) return { rows: [{ section_id: SECTION_ID }] };
-        if (/INSERT INTO media/i.test(sql)) {
+        // Job enqueue (media-transcoding): a queue write, not a media-row write,
+        // running only after a successful media insert. No-op, checked before the
+        // media branch so it neither trips insertThrows nor is misread.
+        if (/INSERT INTO media_jobs/i.test(sql)) {
+            return { rows: [], rowCount: 1 };
+        }
+        if (/INSERT INTO media\b/i.test(sql)) {
             if (insertThrows) throw new Error(DB_ERROR_MESSAGE);
             const p = params ?? [];
-            const uploadId = p[9] as string;
+            // media-transcoding added original_url at index 1; upload_id now last.
+            const uploadId = p[10] as string;
             if (byUploadId.has(uploadId)) return { rows: [] };
             const row: MediaRow = {
                 media_id: nextMediaId++,
                 content: p[0] as string,
-                type: p[1] as string,
-                date: p[2] as string,
-                user_id: p[3] as number,
-                section_id: p[4] as number,
-                event_id: p[5] as number,
-                blurhash: (p[6] as string | null) ?? null,
-                width: (p[7] as number | null) ?? null,
-                height: (p[8] as number | null) ?? null,
+                type: p[2] as string,
+                date: p[3] as string,
+                user_id: p[4] as number,
+                section_id: p[5] as number,
+                event_id: p[6] as number,
+                blurhash: (p[7] as string | null) ?? null,
+                width: (p[8] as number | null) ?? null,
+                height: (p[9] as number | null) ?? null,
                 upload_id: uploadId,
             };
             byUploadId.set(uploadId, row);

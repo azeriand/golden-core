@@ -22,7 +22,7 @@ import pool from '@/lib/db';
 import { verifyRequest } from '@/lib/auth';
 import { isDemoEvent, isDemoUser, demoGuardResponse } from '@/lib/demo-guard';
 import { resolveSectionIdByTime, isValidTimeOfDay } from '@/lib/section-match';
-import { enqueuePosterJob, isVideoType } from '@/lib/poster-jobs';
+import { enqueueMediaJob, isVideoType, isImageType, type MediaJobKind } from '@/lib/media-jobs';
 
 export const runtime = 'nodejs';
 
@@ -30,7 +30,13 @@ export const runtime = 'nodejs';
 // Source: app/api/event/[event-slug]/media/route.ts (Finding 1.4 / Task 1.1).
 // Do NOT invent new limits — these must match the current app behavior.
 
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB (legacy MAX_FILE_SIZE)
+// System-overload guardrail, NOT a quality gate (media-transcoding, Req 7.1).
+// Raised from the legacy 100 MB because modern phone videos easily exceed that;
+// the app now preserves originals + transcodes a reduced display version, so the
+// cap only protects the system from absurd files. This is the AUTHORITATIVE
+// server-side ceiling (enforced via maximumSizeInBytes below); it MUST stay in
+// sync with the confirm route and the legacy media route (Req 7.2).
+const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2 GB overload guardrail
 
 // Accepted MIME types derived from the legacy MIME_FROM_EXTENSION map. The
 // authoritative server-side enforcement happens via `allowedContentTypes` in
@@ -300,7 +306,7 @@ export async function POST(
                     throw new Error('Only images and videos');
                 }
                 if (parsed.size > MAX_FILE_SIZE) {
-                    throw new Error('File size exceeds 100 MB limit');
+                    throw new Error('File size exceeds 2 GB limit');
                 }
 
                 // Server-CONTROLLED pathname enforcement (Req 5.8): the minted
@@ -502,11 +508,12 @@ export async function POST(
                     //    route module). Both converge via ON CONFLICT.
                     try {
                         const insertResult = await pool.query(
-                            `INSERT INTO media (content, type, date, user_id, section_id, event_id, blurhash, width, height, upload_id)
-                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                            `INSERT INTO media (content, original_url, type, date, user_id, section_id, event_id, blurhash, width, height, upload_id)
+                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                              ON CONFLICT (upload_id) WHERE upload_id IS NOT NULL DO NOTHING`,
                             [
-                                blob.url,
+                                blob.url,         // content = original at creation; worker rewrites to derivative later
+                                blob.url,         // original_url = same Blob URL; never overwritten (Req 1.2, 1.3)
                                 blob.contentType,
                                 parsed.date,
                                 parsed.userId,
@@ -540,14 +547,22 @@ export async function POST(
                         throw dbErr;
                     }
 
-                    // 8. ENQUEUE POSTER JOB for videos (design Component 4,
-                    //    Req 4.1, 4.2, 4.3, 4.4, 4.5, 5.1).
+                    // 8. ENQUEUE PER-KIND WORKER JOBS (design Component 2/4,
+                    //    Req 3.1, 4.1, 4.2, 4.4, 4.5, 5.1, 5.2, 5.4).
                     //
-                    //    Video-only: the completed blob's contentType is exactly
-                    //    the value inserted into media.type above, so it is the
-                    //    single source of truth for "is this a video?" (Req 4.3).
-                    //    Images enqueue nothing.
-                    if (isVideoType(blob.contentType)) {
+                    //    Kind is decided from the completed blob's contentType,
+                    //    which is exactly the value inserted into media.type
+                    //    above, so it is the single source of truth (Req 4.3):
+                    //      - VIDEO -> 'poster' (unchanged) + 'video' (transcode)
+                    //      - IMAGE -> 'image' (display derivative)
+                    //      - unknown -> nothing.
+                    const kinds: MediaJobKind[] = isVideoType(blob.contentType)
+                        ? ['poster', 'video']
+                        : isImageType(blob.contentType)
+                          ? ['image']
+                          : [];
+
+                    if (kinds.length > 0) {
                         // The idempotent INSERT above uses ON CONFLICT DO NOTHING
                         // without RETURNING, so on the no-op branch (confirm won
                         // the race) we have no media_id in hand. Resolve it by
@@ -564,7 +579,7 @@ export async function POST(
                                 // already existed. Nothing to enqueue against;
                                 // log and return without failing the webhook.
                                 console.error(
-                                    'onUploadCompleted: no media row found to enqueue poster job',
+                                    'onUploadCompleted: no media row found to enqueue jobs',
                                     parsed.uploadId,
                                 );
                                 return;
@@ -575,32 +590,45 @@ export async function POST(
                             // Vercel Blob retries the webhook (Req 4.4). ON
                             // CONFLICT DO NOTHING makes the retry safe (Req 4.5).
                             console.error(
-                                'onUploadCompleted: error resolving media_id for poster enqueue (will allow retry)',
+                                'onUploadCompleted: error resolving media_id for job enqueue (will allow retry)',
                                 dbErr,
                             );
                             throw dbErr;
                         }
 
-                        try {
-                            // Idempotent per media_id via the unique index +
-                            // ON CONFLICT DO NOTHING inside the helper (Req 5.1).
-                            const inserted = await enqueuePosterJob(pool, mediaId);
-                            console.error(
-                                'onUploadCompleted: poster job enqueue',
-                                { media_id: mediaId, inserted },
-                            );
-                        } catch (enqueueErr) {
-                            // ERROR SEMANTICS DIFFER FROM CONFIRM: the webhook has
-                            // no user-facing response and Vercel Blob retries on
-                            // throw, so a transient enqueue DB error is RETHROWN
-                            // so the webhook is retried (Req 4.4). The helper's
-                            // ON CONFLICT DO NOTHING guarantees the retry cannot
-                            // create a duplicate job (Req 4.5, 5.1).
-                            console.error(
-                                'onUploadCompleted: poster job enqueue failed (will allow retry)',
-                                { media_id: mediaId, error: enqueueErr },
-                            );
-                            throw enqueueErr;
+                        // Enqueue each kind independently. Each is idempotent per
+                        // (media_id, kind) via the unique index + ON CONFLICT DO
+                        // NOTHING inside the helper (Req 5.1, 5.2). A genuine DB
+                        // error on ANY kind is RETHROWN so Vercel Blob retries the
+                        // webhook (Req 4.4); the retry cannot create duplicates,
+                        // and kinds already enqueued on a prior attempt are no-ops
+                        // (Req 4.5). We collect the first error and rethrow after
+                        // attempting the remaining kinds so a single kind's
+                        // failure does not skip the others (Req 5.4).
+                        let firstEnqueueError: unknown = null;
+                        for (const kind of kinds) {
+                            try {
+                                const inserted = await enqueueMediaJob(pool, mediaId, kind);
+                                console.error('onUploadCompleted: media job enqueue', {
+                                    media_id: mediaId,
+                                    kind,
+                                    inserted,
+                                });
+                            } catch (enqueueErr) {
+                                console.error(
+                                    'onUploadCompleted: media job enqueue failed (will allow retry)',
+                                    { media_id: mediaId, kind, error: enqueueErr },
+                                );
+                                if (firstEnqueueError === null) {
+                                    firstEnqueueError = enqueueErr;
+                                }
+                            }
+                        }
+                        if (firstEnqueueError !== null) {
+                            // Rethrow so the webhook is retried (Req 4.4). The
+                            // retry is safe: successfully-enqueued kinds are
+                            // ON CONFLICT no-ops on the next attempt (Req 4.5).
+                            throw firstEnqueueError;
                         }
                     }
                 }
@@ -628,9 +656,9 @@ export async function POST(
         if (message === 'Only images and videos') {
             return Response.json({ error: 'Only images and videos' }, { status: 400 });
         }
-        if (message === 'File size exceeds 100 MB limit') {
+        if (message === 'File size exceeds 2 GB limit') {
             return Response.json(
-                { error: 'File size exceeds 100 MB limit' },
+                { error: 'File size exceeds 2 GB limit' },
                 { status: 400 },
             );
         }

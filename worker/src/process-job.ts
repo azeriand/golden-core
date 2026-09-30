@@ -40,8 +40,17 @@ import { logger } from './logger.js';
 import {
   completeJob as defaultCompleteJob,
   failJob as defaultFailJob,
+  type MediaJob,
   type PosterJob,
 } from './queue.js';
+import {
+  runImageDerivativeJob,
+  type ImageDerivativeDeps,
+} from './image-derivative.js';
+import {
+  runVideoTranscodeJob,
+  type VideoTranscodeDeps,
+} from './video-transcode.js';
 
 /**
  * Minimal executor type so the media read/update work against the shared worker
@@ -166,83 +175,60 @@ async function loadMediaRow(
 }
 
 /**
- * Process a single claimed Poster_Job end to end.
+ * Process a single claimed Media_Job end to end, dispatching by `job.kind`.
  *
- * Control flow (Req 8.3-8.6, 10.1, 10.3, 10.4, 16.1-16.3, 17.3):
- *   1. Log the claim (media_id + transition), then load the media row.
- *   2. If the media row already has a non-null poster_url, this is a safe re-run
- *      (crash/timeout reclaim): mark the job done WITHOUT regenerating and
- *      WITHOUT touching poster_url (Req 10.1, 10.3, 10.4).
- *   3. Otherwise extract an early frame, upload the poster under
- *      posters/{media_id}/poster.<ext>, then write the SINGLE final URL to
- *      media.poster_url only after the upload succeeds (never a partial value),
- *      and mark the job done (Req 8.3, 8.4, 8.5, 8.6).
- *   4. Any thrown error routes to failJob (increment attempts; backoff or
- *      'failed'). On failure poster_url is left exactly as it was (Req 17.3).
+ * This is the top of the per-job pipeline. It owns the cross-cutting concerns
+ * that are IDENTICAL for every kind — claim-time logging, and the failure
+ * contract that converts any thrown error into a failJob transition + a
+ * secret-free failure log — and delegates the kind-specific body to a handler:
  *
- * `processJob` NEVER throws for a normal processing failure: it converts the
- * error into a failJob transition and a secret-free failure log so one bad video
- * cannot crash the poll loop or stall other jobs (Req 17.4).
+ *   - 'poster' -> processPosterJob  (ffmpeg early frame -> media.poster_url)
+ *   - 'image'  -> runImageDerivativeJob (sharp downscale -> media.content)
+ *   - 'video'  -> runVideoTranscodeJob  (ffmpeg transcode -> media.content)
+ *
+ * Each handler is responsible ONLY for its success path and its idempotency
+ * check; it lets errors propagate so this wrapper applies the shared
+ * retry/backoff (Req 9.1-9.4) and never touches the derivative/poster column on
+ * failure (Req 17.3, 8.4). Because the wrapper catches, `processJob` NEVER throws
+ * for a normal processing failure, so one bad job cannot crash the poll loop or
+ * stall other jobs (Req 5.4, 17.4).
  */
 export async function processJob(
-  job: PosterJob,
+  job: MediaJob,
   deps: ProcessJobDeps = defaultDeps(),
 ): Promise<void> {
   const { config, db } = deps;
 
   // Claim-time observability: media_id + the pending -> processing transition,
-  // emitted before generation begins (Req 16.1). The queue already performed the
+  // emitted before work begins (Req 16.1). The queue already performed the
   // DB-side transition; this records it in the log stream.
   logger.claim(job.media_id, job.id, job.attempts);
 
   try {
-    const media = await loadMediaRow(db, job.media_id);
-    if (media === null) {
-      // No media row to work from -> unprocessable; fail cleanly so retry/backoff
-      // eventually drains the job (Req 17.2 semantics for "not retrievable").
-      throw new Error(`media row not found for media_id=${job.media_id}`);
+    switch (job.kind) {
+      case 'poster':
+        await processPosterJob(job, deps);
+        break;
+      case 'image':
+        await runImageDerivativeJob(job, imageDepsFrom(deps));
+        break;
+      case 'video':
+        await runVideoTranscodeJob(job, videoDepsFrom(deps));
+        break;
+      default: {
+        // Exhaustiveness guard: an unknown kind is a clean, drainable failure
+        // (the CHECK constraint should prevent this, but the worker must not
+        // crash if it ever occurs).
+        const unknownKind: string = (job as MediaJob).kind;
+        throw new Error(`unknown media job kind: ${unknownKind}`);
+      }
     }
-
-    // Processing idempotency: a re-run after a crash/timeout must not regenerate
-    // or overwrite an existing poster. If poster_url is already set, the job is
-    // effectively done (Req 10.1, 10.3, 10.4).
-    if (media.poster_url !== null && media.poster_url !== '') {
-      await deps.completeJob(job.id, db);
-      logger.done(job.media_id, job.id);
-      return;
-    }
-
-    // Extract an early, downscaled frame from the video content URL (Req 8.1,
-    // 8.2). A failure here (content not retrievable / cannot decode) throws and
-    // is handled by the catch below (Req 17.1, 17.2).
-    const frame = await deps.extractFrame({
-      contentUrl: media.content,
-      maxDimension: config.maxDimension,
-    });
-
-    // Upload the poster under a media_id-namespaced path (Req 8.3, 8.6). The
-    // final public URL is known only after this resolves.
-    const pathname = posterBlobPath(job.media_id, frame.extension);
-    const upload = await deps.uploadPoster(pathname, frame, config);
-
-    // Record the SINGLE final poster URL, only after a successful upload, never a
-    // partial value (Req 8.4, 10.3, 10.4). Scoped by media_id so no other row is
-    // touched.
-    await db.query(`UPDATE media SET poster_url = $1 WHERE media_id = $2`, [
-      upload.url,
-      job.media_id,
-    ]);
-
-    // Mark the job done now that poster_url is persisted (Req 8.5). A 'done' job
-    // therefore always corresponds to a non-null poster_url.
-    await deps.completeJob(job.id, db);
-    logger.done(job.media_id, job.id);
   } catch (err) {
-    // Any failure (missing row, ffmpeg, upload, db write) routes here. failJob
-    // increments attempts and either reschedules with backoff or marks the job
-    // 'failed' at Max_Attempts (Req 9.1-9.4). Crucially, we do NOT touch
-    // media.poster_url on failure, so a prior value is preserved and a fresh row
-    // stays null (Req 17.3, 8.4).
+    // Any failure (missing row, ffmpeg, sharp, upload, db write, unknown kind)
+    // routes here. failJob increments attempts and either reschedules with
+    // backoff or marks the job 'failed' at Max_Attempts (Req 9.1-9.4). We do NOT
+    // touch the media derivative/poster column on failure, so a prior value is
+    // preserved and a fresh row stays as-is (Req 17.3, 8.4).
     await deps.failJob(
       job.id,
       job.attempts,
@@ -258,4 +244,97 @@ export async function processJob(
       job.attempts + 1 >= config.maxAttempts ? 'failed' : 'pending';
     logger.failure(job.media_id, job.id, job.attempts + 1, nextStatus, err);
   }
+}
+
+/**
+ * Poster pipeline (unchanged behavior, extracted from the former processJob).
+ *
+ * Control flow (Req 8.3-8.6, 10.1, 10.3, 10.4):
+ *   1. Load the media row.
+ *   2. If the media row already has a non-null poster_url, this is a safe re-run
+ *      (crash/timeout reclaim): mark the job done WITHOUT regenerating and
+ *      WITHOUT touching poster_url (Req 10.1, 10.3, 10.4).
+ *   3. Otherwise extract an early frame, upload the poster under
+ *      posters/{media_id}/poster.<ext>, then write the SINGLE final URL to
+ *      media.poster_url only after the upload succeeds (never a partial value),
+ *      and mark the job done (Req 8.3, 8.4, 8.5, 8.6).
+ *
+ * Errors are allowed to PROPAGATE to the processJob wrapper, which applies the
+ * shared failJob/backoff and leaves poster_url untouched (Req 17.3).
+ */
+export async function processPosterJob(
+  job: MediaJob,
+  deps: ProcessJobDeps,
+): Promise<void> {
+  const { config, db } = deps;
+
+  const media = await loadMediaRow(db, job.media_id);
+  if (media === null) {
+    // No media row to work from -> unprocessable; fail cleanly so retry/backoff
+    // eventually drains the job (Req 17.2 semantics for "not retrievable").
+    throw new Error(`media row not found for media_id=${job.media_id}`);
+  }
+
+  // Processing idempotency: a re-run after a crash/timeout must not regenerate
+  // or overwrite an existing poster. If poster_url is already set, the job is
+  // effectively done (Req 10.1, 10.3, 10.4).
+  if (media.poster_url !== null && media.poster_url !== '') {
+    await deps.completeJob(job.id, db);
+    logger.done(job.media_id, job.id);
+    return;
+  }
+
+  // Extract an early, downscaled frame from the video content URL (Req 8.1,
+  // 8.2). A failure here (content not retrievable / cannot decode) throws and
+  // is handled by the processJob wrapper (Req 17.1, 17.2).
+  const frame = await deps.extractFrame({
+    contentUrl: media.content,
+    maxDimension: config.maxDimension,
+  });
+
+  // Upload the poster under a media_id-namespaced path (Req 8.3, 8.6). The
+  // final public URL is known only after this resolves.
+  const pathname = posterBlobPath(job.media_id, frame.extension);
+  const upload = await deps.uploadPoster(pathname, frame, config);
+
+  // Record the SINGLE final poster URL, only after a successful upload, never a
+  // partial value (Req 8.4, 10.3, 10.4). Scoped by media_id so no other row is
+  // touched.
+  await db.query(`UPDATE media SET poster_url = $1 WHERE media_id = $2`, [
+    upload.url,
+    job.media_id,
+  ]);
+
+  // Mark the job done now that poster_url is persisted (Req 8.5). A 'done' job
+  // therefore always corresponds to a non-null poster_url.
+  await deps.completeJob(job.id, db);
+  logger.done(job.media_id, job.id);
+}
+
+/**
+ * Adapt the shared ProcessJobDeps into the narrower dependency set the image
+ * derivative handler needs (config, db, and the queue transitions). The image
+ * handler owns its own fetch/sharp/upload boundaries with their own defaults, so
+ * only the shared collaborators are threaded through here (keeps the poster
+ * pipeline's injected mocks working unchanged in tests).
+ */
+function imageDepsFrom(deps: ProcessJobDeps): ImageDerivativeDeps {
+  return {
+    config: deps.config,
+    db: deps.db,
+    completeJob: deps.completeJob,
+  };
+}
+
+/**
+ * Adapt the shared ProcessJobDeps into the video transcode handler's dependency
+ * set (config, db, and the queue transitions). The video handler owns its own
+ * ffmpeg/upload boundaries.
+ */
+function videoDepsFrom(deps: ProcessJobDeps): VideoTranscodeDeps {
+  return {
+    config: deps.config,
+    db: deps.db,
+    completeJob: deps.completeJob,
+  };
 }

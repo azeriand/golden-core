@@ -11,6 +11,15 @@ export interface Media {
     username: string | null;
     poster_url: string | null;
     /**
+     * The preserved, untouched ORIGINAL Blob URL (media-transcoding). `content`
+     * is what the app serves (the reduced display derivative once the worker has
+     * produced it, or the original until then); `original_url` always points at
+     * the full-quality original for future high-quality delivery (e.g.
+     * WeTransfer export) and downloads. null on legacy rows uploaded before this
+     * feature, where `content` is the only version.
+     */
+    original_url: string | null;
+    /**
      * Intrinsic pixel dimensions of the media (image, or a video's poster),
      * persisted at upload time so the gallery layout can compute aspect ratios
      * before the media loads (no layout shift). null when unknown — legacy rows,

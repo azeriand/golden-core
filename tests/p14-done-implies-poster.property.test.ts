@@ -162,6 +162,11 @@ const BASE_CONFIG: WorkerConfig = {
     staleProcessingSeconds: 300,
     maxDimension: 640,
     backoffBaseSeconds: 5,
+    imageMaxDimension: 2000,
+    imageQuality: 80,
+    videoMaxHeight: 1080,
+    videoCrf: 23,
+    videoPreset: 'veryfast',
 };
 
 // --- fast-check generators ----------------------------------------------------
@@ -258,6 +263,7 @@ describe('P14 — a done job implies a non-null poster_url', () => {
                     const job: PosterJob = {
                         id: e.id,
                         media_id: e.media_id,
+                        kind: 'poster',
                         status: 'processing',
                         attempts: e.attempts,
                         run_after: new Date().toISOString(),
@@ -314,6 +320,7 @@ describe('P14 — a done job implies a non-null poster_url', () => {
                         {
                             id: 1,
                             media_id,
+                            kind: 'poster',
                             status: 'processing',
                             attempts: 0,
                             run_after: new Date().toISOString(),
@@ -372,6 +379,7 @@ describe('P14 — a done job implies a non-null poster_url', () => {
                         {
                             id: 1,
                             media_id,
+                            kind: 'poster',
                             status: 'processing',
                             attempts: 0,
                             run_after: new Date().toISOString(),

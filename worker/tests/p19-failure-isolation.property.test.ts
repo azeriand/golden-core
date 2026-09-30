@@ -43,6 +43,7 @@ function makeJob(id: number): PosterJob {
   return {
     id,
     media_id: 1000 + id,
+    kind: 'poster', // failure-isolation is kind-agnostic; poster is representative
     status: 'processing', // claimJobs already flipped it to 'processing'
     attempts: 0,
     run_after: new Date().toISOString(),

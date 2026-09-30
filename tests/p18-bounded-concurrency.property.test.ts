@@ -123,6 +123,7 @@ function makeJob(id: number): PosterJob {
     return {
         id,
         media_id: id,
+        kind: 'poster',
         status: 'pending',
         attempts: 0,
         run_after: new Date(0).toISOString(),

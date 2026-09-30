@@ -160,26 +160,40 @@ function createMediaTableModel(seed?: MediaRow): MediaTableModel {
         if (/FROM sections/i.test(sql)) {
             return { rows: [{ section_id: SECTION_ID }] };
         }
-        if (/INSERT INTO media/i.test(sql)) {
+        if (/INSERT INTO media_jobs/i.test(sql)) {
+            // Job enqueue (media-transcoding) — NOT a media-row mutation. The
+            // non-demo control path enqueues poster/image/video jobs after a real
+            // media insert; it is an idempotent ON CONFLICT DO NOTHING write to
+            // the queue table and must NOT count against media immutability. Demo
+            // scenarios never reach here (they 403 before any insert). Modeled as
+            // a harmless no-op so it does not fall through to the media branch
+            // (whose substring match would otherwise misread the params).
+            return { rows: [], rowCount: 1 };
+        }
+        if (/INSERT INTO media\b/i.test(sql)) {
             // OBSERVABLE-REACH: record that a mutation was attempted the instant
             // the handler runs the INSERT — before deciding conflict/no-conflict.
             insertAttempts++;
             const p = params ?? [];
-            const uploadId = p[9] as string;
+            // Column order (media-transcoding added original_url at index 1):
+            // content(0), original_url(1), type(2), date(3), user_id(4),
+            // section_id(5), event_id(6), blurhash(7), width(8), height(9),
+            // upload_id(10).
+            const uploadId = p[10] as string;
             if (byUploadId.has(uploadId)) {
                 return { rows: [], rowCount: 0 }; // conflict
             }
             const row: MediaRow = {
                 media_id: nextMediaId++,
                 content: p[0] as string,
-                type: p[1] as string,
-                date: p[2] as string,
-                user_id: p[3] as number,
-                section_id: p[4] as number,
-                event_id: p[5] as number,
-                blurhash: (p[6] as string | null) ?? null,
-                width: (p[7] as number | null) ?? null,
-                height: (p[8] as number | null) ?? null,
+                type: p[2] as string,
+                date: p[3] as string,
+                user_id: p[4] as number,
+                section_id: p[5] as number,
+                event_id: p[6] as number,
+                blurhash: (p[7] as string | null) ?? null,
+                width: (p[8] as number | null) ?? null,
+                height: (p[9] as number | null) ?? null,
                 upload_id: uploadId,
             };
             byUploadId.set(uploadId, row);
@@ -410,6 +424,8 @@ function controlRow(): MediaRow {
         event_id: EVENT_ID,
         blurhash: 'CONTROL',
         upload_id: '00000000-0000-4000-8000-000000000001',
+        width: null,
+        height: null,
     };
 }
 

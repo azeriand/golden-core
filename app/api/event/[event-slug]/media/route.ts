@@ -16,7 +16,10 @@ const VIDEO_EXTENSIONS = new Set(['mov', 'mp4', 'webm', '3gp', '3gpp', 'avi', 'm
 const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'gif', 'bmp', 'tiff']);
 const ALL_MEDIA_EXTENSIONS = new Set([...VIDEO_EXTENSIONS, ...IMAGE_EXTENSIONS]);
 
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+// System-overload guardrail, NOT a quality gate (media-transcoding, Req 7.1/7.2).
+// Kept in sync with the direct-to-Blob upload-token handshake and the confirm
+// route. Raised from the legacy 100 MB so modern phone videos are not blocked.
+const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2 GB overload guardrail
 
 const MIME_FROM_EXTENSION: Record<string, string> = {
     jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
@@ -94,7 +97,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-        return new Response("File size exceeds 100 MB limit", { status: 400 });
+        return new Response("File size exceeds 2 GB limit", { status: 400 });
     }
 
     // Extract creation time-of-day for automatic categorization.

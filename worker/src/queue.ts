@@ -1,10 +1,17 @@
-// Poster_Worker queue state machine.
+// Worker queue state machine.
 //
-// This module owns the SQL that drives the Poster_Job lifecycle in the
-// public.poster_jobs table (the durable, Postgres-backed queue -- no managed
+// This module owns the SQL that drives the Media_Job lifecycle in the
+// public.media_jobs table (the durable, Postgres-backed queue -- no managed
 // queue product, Requirement 2.5/2.6). It is the single place that transitions a
 // job between the four Job_Status values (pending -> processing -> done/failed,
 // with reclaim/retry returning failed-but-retryable work to pending).
+//
+// media_jobs generalises the original poster_jobs queue: each row carries a
+// `kind` ('poster' | 'image' | 'video') so the worker can dispatch poster
+// generation, image display-derivative, and video transcode work through the
+// SAME claim/complete/fail/reclaim machinery. The queue operations here are
+// kind-agnostic — they move rows through the state machine regardless of kind;
+// process-job.ts reads `kind` to decide the per-job pipeline.
 //
 // The four exported operations map directly to the design's queue contract:
 //   - claimJobs(limit)          claim due pending jobs atomically (Req 7.1, 7.2, 7.5)
@@ -26,19 +33,30 @@ import { getPool } from './db.js';
  */
 type Executor = Pick<Pool | PoolClient, 'query'>;
 
+/** The kind of work a media_jobs row represents (mirrors lib/media-jobs.ts). */
+export type MediaJobKind = 'poster' | 'image' | 'video';
+
 /**
- * A Poster_Job row as claimed from the queue. Mirrors the columns returned by the
+ * A Media_Job row as claimed from the queue. Mirrors the columns returned by the
  * claim statement's RETURNING clause. `run_after` is serialized by `pg` as an ISO
- * timestamp string. `status` is constrained to the four lifecycle values by the
- * table's CHECK constraint (Requirement 2.3).
+ * timestamp string. `status` is constrained to the four lifecycle values, and
+ * `kind` to the three job kinds, by the table's CHECK constraints (Requirement 2.3).
  */
-export interface PosterJob {
+export interface MediaJob {
   id: number;
   media_id: number;
+  kind: MediaJobKind;
   status: 'pending' | 'processing' | 'done' | 'failed';
   attempts: number;
   run_after: string; // ISO timestamp
 }
+
+/**
+ * @deprecated Use `MediaJob`. Retained as an alias so existing imports keep
+ * compiling while callers migrate. A poster job is simply a `MediaJob` with
+ * `kind === 'poster'`.
+ */
+export type PosterJob = MediaJob;
 
 /**
  * Claim up to `limit` due `pending` jobs, flipping them to `processing` in a
@@ -62,21 +80,21 @@ export interface PosterJob {
 export async function claimJobs(
   limit: number,
   db: Executor = getPool(),
-): Promise<PosterJob[]> {
+): Promise<MediaJob[]> {
   if (!Number.isFinite(limit) || limit <= 0) {
     return [];
   }
-  const result = await db.query<PosterJob>(
-    `UPDATE poster_jobs
+  const result = await db.query<MediaJob>(
+    `UPDATE media_jobs
      SET status = 'processing', updated_at = now()
      WHERE id IN (
-         SELECT id FROM poster_jobs
+         SELECT id FROM media_jobs
          WHERE status = 'pending' AND run_after <= now()
          ORDER BY run_after
          FOR UPDATE SKIP LOCKED
          LIMIT $1
      )
-     RETURNING id, media_id, status, attempts, run_after`,
+     RETURNING id, media_id, kind, status, attempts, run_after`,
     [limit],
   );
   return result.rows;
@@ -93,7 +111,7 @@ export async function completeJob(
   db: Executor = getPool(),
 ): Promise<void> {
   await db.query(
-    `UPDATE poster_jobs
+    `UPDATE media_jobs
      SET status = 'done', updated_at = now()
      WHERE id = $1`,
     [jobId],
@@ -126,7 +144,7 @@ export async function failJob(
   db: Executor = getPool(),
 ): Promise<void> {
   await db.query(
-    `UPDATE poster_jobs
+    `UPDATE media_jobs
      SET attempts = attempts + 1,
          status = CASE WHEN attempts + 1 >= $2 THEN 'failed' ELSE 'pending' END,
          run_after = CASE WHEN attempts + 1 >= $2
@@ -151,7 +169,7 @@ export async function reclaimStaleProcessing(
   db: Executor = getPool(),
 ): Promise<number> {
   const result = await db.query(
-    `UPDATE poster_jobs
+    `UPDATE media_jobs
      SET status = 'pending', updated_at = now()
      WHERE status = 'processing'
        AND updated_at < now() - ($1 * interval '1 second')`,
