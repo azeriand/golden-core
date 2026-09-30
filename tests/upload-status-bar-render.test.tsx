@@ -164,7 +164,7 @@ describe("UploadStatusBar render — completion phase (Req 4.2, 4.3, 3.4)", () =
 });
 
 describe("UploadStatusBar render — positioning & responsive classes (Req 1.4, 1.5, 1.6)", () => {
-  it("layers over the Filter_Pill (fixed, bottom-4, z-[101]) and is full-width mobile / content-width desktop", () => {
+  it("sits above the Filter_Pill (fixed, bottom-24, z-[101]) and is full-width mobile / content-width desktop", () => {
     setItems([]);
     const { container } = render(<UploadStatusBar />);
 
@@ -172,11 +172,13 @@ describe("UploadStatusBar render — positioning & responsive classes (Req 1.4, 
       setItems([makeItem("a", "uploading", 30)]);
     });
 
-    // Outer wrapper: fixed to the bottom and layered above the Filter_Pill
-    // (z-[100]) and the z-[99] gradient (Req 1.4).
+    // Outer wrapper: fixed to the bottom at bottom-24 so it sits ABOVE the
+    // Filter_Pill row (which is at bottom-4), stacked rather than overlapping,
+    // and still layered above the Filter_Pill (z-[100]) and the z-[99] gradient
+    // (Req 1.4).
     const wrapper = outerWrapper(container);
     expect(wrapper.classList.contains("fixed")).toBe(true);
-    expect(wrapper.classList.contains("bottom-4")).toBe(true);
+    expect(wrapper.classList.contains("bottom-24")).toBe(true);
     expect(wrapper.classList.contains("z-[101]")).toBe(true);
 
     // The pill spans full width on mobile (Req 1.5) and sizes to content on
