@@ -1,0 +1,370 @@
+{
+  "pbtResults": {
+    "1.2 Write property test for aggregate progress": {
+      "status": "passed",
+      "lastRunTimestamp": 1790795403588
+    },
+    "1.4 Write property test for done-count": {
+      "status": "passed",
+      "lastRunTimestamp": 1790795414935
+    },
+    "1.3 Write property test for ring fill proportionality": {
+      "status": "passed",
+      "lastRunTimestamp": 1790795408319
+    },
+    "3.2 Write property test for the phase/visibility state machine": {
+      "status": "passed",
+      "lastRunTimestamp": 1790795419953
+    }
+  },
+  "executionHistory": {
+    "1.1 Implement derivation helpers in `app/components/upload-status.ts`": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793571140
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793579916
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793788451
+      }
+    ],
+    "1.2 Write property test for aggregate progress": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793571171
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793792496
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794029964
+      }
+    ],
+    "1.3 Write property test for ring fill proportionality": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793571382
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793793813
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794030881
+      }
+    ],
+    "1.4 Write property test for done-count": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793571436
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793794704
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794032034
+      }
+    ],
+    "2.1 Add scoped selectors reading `useUploadStore`": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793571470
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793795712
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794033360
+      }
+    ],
+    "3.1 Implement `UploadStatusBar` phase latch in `app/components/upload-status-bar.tsx`": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793571500
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794037369
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794156715
+      }
+    ],
+    "3.2 Write property test for the phase/visibility state machine": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793571533
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794162906
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794331686
+      }
+    ],
+    "3.3 Write unit test for the 5s auto-hide timer": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793571568
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794164192
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794333227
+      }
+    ],
+    "4.1 Render Progress_Ring, percentage, and completion checkmark": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793571604
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794164915
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794330625
+      }
+    ],
+    "4.2 Render the two Spanish text rows and completion message": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793571646
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794337780
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794412803
+      }
+    ],
+    "4.3 Apply positioning and responsive width classes": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793571670
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794417377
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794568193
+      }
+    ],
+    "4.4 Write render/example tests for the pill": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793571705
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794572730
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794776349
+      }
+    ],
+    "4.5 Write re-render count test for scoped subscription": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793571746
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794574145
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794777673
+      }
+    ],
+    "5.1 Render `<UploadStatusBar/>` in the \"Barra normal\" branch of `app/components/navbar.tsx`": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793571785
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794574980
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794780033
+      }
+    ],
+    "6. Checkpoint - Ensure the status bar works end to end": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793571816
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794788532
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794898886
+      }
+    ],
+    "7.1 Confirm the root cause at runtime, then apply a minimal `md:`-only fix in `app/components/navbar.tsx`": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793571918
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794904118
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790795128434
+      }
+    ],
+    "7.2 Write example tests for the Upload_Button": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793571950
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790795132106
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790795332262
+      }
+    ],
+    "8. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790793571984
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790795337736
+      },
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790795535370
+      }
+    ],
+    "1. Create pure derivation helpers": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794032133
+      }
+    ],
+    "2. Implement scoped store selectors": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794033384
+      }
+    ],
+    "3. Implement the phase state machine and auto-hide timer": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794333251
+      }
+    ],
+    "4. Implement the rendered pill UI": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794777706
+      }
+    ],
+    "5. Integrate into the navbar": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790794780058
+      }
+    ],
+    "7. Fix the desktop Upload_Button (Req 6)": [
+      {
+        "executionId": "5f96253d-7692-4738-9ec2-7dbf0bc28fb0",
+        "chatSessionId": "sess_cb3373ee-15b1-4058-a25b-c5eab3e38d99",
+        "timestamp": 1790795332305
+      }
+    ]
+  }
+}

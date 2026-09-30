@@ -14,6 +14,7 @@ import { LuMoveVertical } from "react-icons/lu";
 import { useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { isUnclassifiedSectionId } from "@/lib/sections";
+import UploadStatusBar from "./upload-status-bar";
 
 export default function Navbar() {
 
@@ -302,7 +303,7 @@ export default function Navbar() {
 
                     {!isDemo && (
                         <>
-                            <Button appearance='mate' color="pink" intensity={700} size='md' className="!rounded-full bg-pink-500/90! backdrop-blur-md! border-pink-500! text-white! md:text-[#E83E8C]! md:border-pink-500! md:bg-pink-200!" style={{ width: '48px', height: '48px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} icon={<TbPhotoPlus size={24}/>} onClick={() => fileInputRef.current?.click()}></Button>
+                            <Button appearance='mate' color="pink" intensity={700} size='md' className="!rounded-full bg-pink-500/90! backdrop-blur-md! border-pink-500! text-white! md:text-white! md:border-pink-500! md:bg-pink-500!" style={{ width: '48px', height: '48px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} icon={<TbPhotoPlus size={24}/>} onClick={() => fileInputRef.current?.click()}></Button>
                             <input ref={fileInputRef} type="file" accept="image/*,video/*,.heic,.heif,.mov,.mp4" multiple className="hidden" onChange={(e) => {
                                 const files = Array.from(e.target.files || []);
                                 if (files.length === 0) return;
@@ -321,6 +322,12 @@ export default function Navbar() {
                     )}
 
                     {fileError && <p className="absolute -top-10 left-0 right-0 text-center text-red-500 text-sm bg-white/95 rounded-lg py-1 px-2">{fileError}</p>}
+
+                    {/* Barra de estado de subida: se posiciona sola (fixed
+                        bottom-4 ... z-[101]) y se superpone al Filter_Pill
+                        mientras hay subidas activas; devuelve null cuando no
+                        hay ninguna, por lo que no afecta al layout en reposo. */}
+                    <UploadStatusBar />
                 </div>
             )}
         </>
