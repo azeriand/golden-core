@@ -17,6 +17,8 @@ import {
   SEGMENT_SIZE,
   ROW_OF,
   FULL_WIDTH_MIN_ASPECT,
+  responsiveColumns,
+  segmentSizeForColumns,
 } from "../lib/masonry-layout";
 
 const CONTAINER = 800;
@@ -142,5 +144,76 @@ describe("computeLayout", () => {
     expect(SEGMENT_SIZE).toBe(5);
     expect(ROW_OF).toBe(2);
     expect(FULL_WIDTH_MIN_ASPECT).toBeGreaterThan(1);
+  });
+});
+
+describe("responsive columns", () => {
+  it("keeps two columns on narrow/mobile widths and adds columns as width grows", () => {
+    expect(responsiveColumns(0)).toBe(2);
+    expect(responsiveColumns(500)).toBe(2);
+    expect(responsiveColumns(767)).toBe(2);
+    expect(responsiveColumns(768)).toBe(3);
+    expect(responsiveColumns(1200)).toBe(4);
+    expect(responsiveColumns(1600)).toBe(5);
+    expect(responsiveColumns(3000)).toBe(5);
+  });
+
+  it("sizes a segment as two grid rows plus one banner for any column count", () => {
+    expect(segmentSizeForColumns(2)).toBe(5); // matches the default SEGMENT_SIZE
+    expect(segmentSizeForColumns(3)).toBe(7);
+    expect(segmentSizeForColumns(4)).toBe(9);
+    expect(segmentSizeForColumns(5)).toBe(11);
+  });
+
+  it("lays out more columns per row while still justifying to the width", () => {
+    const columns = 4;
+    // A full segment at 4 columns: 8 portrait grid items + 1 landscape banner.
+    const items: LayoutInput[] = [
+      ...Array.from({ length: 8 }, (_, i) => ({ key: i, aspect: 3 / 4 })),
+      { key: 8, aspect: 1.8 }, // banner candidate
+    ];
+    const cells = computeLayout(items, {
+      containerWidth: CONTAINER,
+      gap: GAP,
+      rowOf: columns,
+      segmentSize: segmentSizeForColumns(columns),
+    });
+
+    // Banner is the landscape item, full width, on its own row.
+    const banner = cells.find((c) => c.fullWidth);
+    expect(banner?.key).toBe(8);
+    expect(cells.filter((c) => c.row === banner!.row).length).toBe(1);
+
+    // The 8 grid items fill two rows of 4, each justified to the container.
+    const gridRows = [...new Set(cells.filter((c) => !c.fullWidth).map((c) => c.row))];
+    expect(gridRows.length).toBe(2);
+    for (const r of gridRows) {
+      expect(cells.filter((c) => c.row === r).length).toBe(4);
+      expect(rowWidth(cells, r)).toBeCloseTo(CONTAINER, 4);
+    }
+  });
+
+  it("still promotes a banner (expand logic) at wider column counts", () => {
+    // 3-column segment (7 items) where only an interior item is landscape:
+    // the engine must still pull it into the full-width banner.
+    const columns = 3;
+    const items: LayoutInput[] = [
+      { key: 0, aspect: 3 / 4 },
+      { key: 1, aspect: 3 / 4 },
+      { key: 2, aspect: 2.1 }, // the only landscape item
+      { key: 3, aspect: 3 / 4 },
+      { key: 4, aspect: 3 / 4 },
+      { key: 5, aspect: 3 / 4 },
+      { key: 6, aspect: 3 / 4 }, // last slot is portrait
+    ];
+    const cells = computeLayout(items, {
+      containerWidth: CONTAINER,
+      gap: GAP,
+      rowOf: columns,
+      segmentSize: segmentSizeForColumns(columns),
+    });
+    const banners = cells.filter((c) => c.fullWidth);
+    expect(banners.length).toBe(1);
+    expect(banners[0].key).toBe(2);
   });
 });

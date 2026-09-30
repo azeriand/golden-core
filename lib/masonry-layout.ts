@@ -47,6 +47,44 @@ export const FULL_WIDTH_MIN_ASPECT = 1.2;
 /** Fallback aspect ratio (w/h) used before an image's real size is known. */
 export const DEFAULT_ASPECT = 3 / 4;
 
+/**
+ * Responsive column breakpoints. Maps the measured container width (px) to the
+ * number of images per justified grid row (`rowOf`). Wider viewports get more
+ * columns; narrow/mobile keeps the original two-column layout. Ordered from
+ * widest to narrowest — the first breakpoint whose `minWidth` fits is used.
+ *
+ * These are CONTAINER widths (the gallery column), not viewport widths, so they
+ * stay correct even when the gallery is nested inside a constrained layout.
+ */
+export const COLUMN_BREAKPOINTS: { minWidth: number; columns: number }[] = [
+  { minWidth: 1600, columns: 5 },
+  { minWidth: 1200, columns: 4 },
+  { minWidth: 768, columns: 3 },
+  { minWidth: 0, columns: 2 },
+];
+
+/**
+ * Pick the number of grid columns (`rowOf`) for a given container width using
+ * COLUMN_BREAKPOINTS. Always returns at least 2 so the layout never collapses
+ * to a single column.
+ */
+export function responsiveColumns(containerWidth: number): number {
+  for (const bp of COLUMN_BREAKPOINTS) {
+    if (containerWidth >= bp.minWidth) return bp.columns;
+  }
+  return ROW_OF;
+}
+
+/**
+ * Derive the segment size for a given column count so a segment always spans
+ * exactly TWO justified grid rows plus one full-width banner slot — the same
+ * shape as the default 5-item / 2-column segment, generalized. E.g. 2 columns
+ * -> 5 (2 + 2 + banner), 4 columns -> 9 (4 + 4 + banner).
+ */
+export function segmentSizeForColumns(columns: number): number {
+  return columns * 2 + 1;
+}
+
 export interface LayoutInput {
   /** Stable key for the item (used by the renderer for React keys). */
   key: string | number;
