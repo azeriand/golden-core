@@ -154,12 +154,13 @@ export default function UploadStatusBar(): React.ReactElement | null {
   const dashOffset = ringDashOffset(isCompletion ? 100 : percent, CIRCUMFERENCE);
 
   return (
-    // Outer positioning wrapper (task 4.3). Fixed to the bottom, layered at
-    // z-[101] so it sits OVER the Filter_Pill (z-[100]) and above the z-[99]
-    // blur gradient (see navbar.tsx). Mobile: spans the full width with edge
-    // padding (Req 1.5). Desktop (>= md:): centered and sized to content
-    // (Req 1.6).
-    <div className="fixed bottom-4 left-0 right-0 z-[101] px-4 md:left-1/2 md:right-auto md:w-auto md:-translate-x-1/2 md:px-0">
+    // Outer positioning wrapper (task 4.3). Fixed to the bottom at bottom-24 so
+    // it sits ABOVE the Filter_Pill row (stacked, not overlapping) — the pill
+    // row lives at bottom-4, so bottom-24 clears it with a gap. Still layered at
+    // z-[101] so it renders above the Filter_Pill (z-[100]) and the z-[99] blur
+    // gradient (see navbar.tsx). Mobile: spans the full width with edge padding
+    // (Req 1.5). Desktop (>= md:): centered and sized to content (Req 1.6).
+    <div className="fixed bottom-24 left-0 right-0 z-[101] px-4 md:left-1/2 md:right-auto md:w-auto md:-translate-x-1/2 md:px-0">
       {/* The pill itself: full width on mobile, content width on desktop, with
           rounded-full pill styling consistent with the Filter_Pill Card. */}
       <div
