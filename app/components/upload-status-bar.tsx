@@ -169,7 +169,7 @@ export default function UploadStatusBar(): React.ReactElement | null {
         data-percent={percent}
         data-done={done}
         data-total={total}
-        className="flex w-full items-center gap-3 rounded-full bg-[#FFFCF8]/95 p-3 shadow-lg backdrop-blur-md md:w-fit md:pr-6"
+        className="flex w-full items-center gap-3 rounded-full bg-[#FFFCF8]/95 p-3 shadow-lg backdrop-blur-md md:w-auto md:pr-6"
       >
         {/* Progress_Ring + centered label (percentage while active, checkmark
             in completion). */}
