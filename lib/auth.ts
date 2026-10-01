@@ -74,3 +74,40 @@ export function verifyRequest(request: NextRequest):
         },
     };
 }
+
+/**
+ * Requires that the user is an administrator.
+ *
+ * Checks the result of `verifyRequest` and returns a short-circuit `Response`
+ * if the user is not authenticated or not an admin:
+ *   - Returns the auth failure response if verification failed (401 or 500)
+ *   - Returns 403 Forbidden if the user is authenticated but not an admin
+ *   - Returns `null` if the user is authenticated AND is an admin
+ *
+ * Usage pattern in admin endpoints:
+ * ```
+ * const authResult = verifyRequest(request);
+ * const errorResponse = requireAdmin(authResult);
+ * if (errorResponse) return errorResponse;
+ * // Now authResult.user.isAdmin is guaranteed to be true
+ * ```
+ */
+export function requireAdmin(
+    authResult: ReturnType<typeof verifyRequest>
+): Response | null {
+    if (!authResult.ok) {
+        return authResult.response;
+    }
+
+    if (!authResult.user.isAdmin) {
+        return new Response(
+            JSON.stringify({ error: 'Forbidden: Admin access required' }),
+            { 
+                status: 403,
+                headers: { 'Content-Type': 'application/json' }
+            }
+        );
+    }
+
+    return null;
+}

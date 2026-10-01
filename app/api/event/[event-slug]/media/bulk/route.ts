@@ -51,7 +51,7 @@ export async function DELETE(
     let mediaParams: any[];
 
     if (isAdmin) {
-        // Admin can delete any media in the event
+        // Admin can delete any media in the event (including hidden media)
         mediaQuery = `
             SELECT media_id, content
             FROM media
@@ -60,13 +60,14 @@ export async function DELETE(
         `;
         mediaParams = [mediaIds, eventId];
     } else {
-        // User can only delete their own media
+        // User can only delete their own media (and only if not hidden)
         mediaQuery = `
             SELECT media_id, content
             FROM media
             WHERE media_id = ANY($1::int[])
             AND event_id = $2
             AND user_id = $3
+            AND is_hidden = false
         `;
         mediaParams = [mediaIds, eventId, userId];
     }
@@ -184,7 +185,7 @@ export async function PATCH(
     let updateParams: any[];
 
     if (isAdmin) {
-        // Admin can move any media in the event
+        // Admin can move any media in the event (including hidden media)
         updateQuery = `
             UPDATE media
             SET section_id = $1
@@ -194,13 +195,14 @@ export async function PATCH(
         `;
         updateParams = [targetSectionId, mediaIds, eventId];
     } else {
-        // User can only move their own media
+        // User can only move their own media (and only if not hidden)
         updateQuery = `
             UPDATE media
             SET section_id = $1
             WHERE media_id = ANY($2::int[])
             AND event_id = $3
             AND user_id = $4
+            AND is_hidden = false
             RETURNING media_id
         `;
         updateParams = [targetSectionId, mediaIds, eventId, userId];

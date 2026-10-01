@@ -14,20 +14,24 @@ export async function GET( request: NextRequest, { params }: { params: Promise<{
         return auth.response;
     }
 
+    const isAdmin = auth.user.isAdmin;
+
     const mediaResult = await pool.query(
         `
         SELECT
             media.media_id,
             media.content,
             media.type,
-            media.event_id
+            media.event_id,
+            media.is_hidden
         FROM media
         INNER JOIN events
             ON events.event_id = media.event_id
         WHERE media.media_id = $1
           AND events.event_slug = $2
+          AND (media.is_hidden = false OR $3 = true)
         `,
-        [mediaId, eventSlug]
+        [mediaId, eventSlug, isAdmin]
     );
 
     if (mediaResult.rows.length === 0) {

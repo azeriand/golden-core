@@ -160,11 +160,31 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         const result = await pool.query(
             `INSERT INTO media (content, type, date, user_id, section_id, event_id, blurhash, width, height)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-             RETURNING *`,
+             RETURNING media_id, user_id, content, type, date, section_id, blurhash, width, height, poster_url, original_url`,
             [blob.url, mediaType, date, userId, sectionId, eventId, blurhash, width, height]
         );
 
-        return new Response(JSON.stringify(result.rows[0]), {
+        // Return only the public Media DTO fields — never expose visibility
+        // metadata (is_hidden, hidden_at, hidden_by) in public responses (Req 3.5).
+        const row = result.rows[0];
+        const publicMedia = {
+            media_id: row.media_id,
+            user_id: row.user_id,
+            content: row.content,
+            type: row.type,
+            likes: 0,
+            liked: false,
+            date: row.date,
+            section_id: row.section_id,
+            blurhash: row.blurhash,
+            width: row.width ?? null,
+            height: row.height ?? null,
+            poster_url: row.poster_url ?? null,
+            original_url: row.original_url ?? null,
+            username: null,
+        };
+
+        return new Response(JSON.stringify(publicMedia), {
             status: 201,
             headers: { 'Content-Type': 'application/json' },
         });

@@ -15,6 +15,7 @@ import { useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { isUnclassifiedSectionId } from "@/lib/sections";
 import UploadStatusBar from "./upload-status-bar";
+import ReasonDialog from "./admin/ReasonDialog";
 
 export default function Navbar() {
 
@@ -36,7 +37,9 @@ export default function Navbar() {
     // A section id can be a real numeric DB id or the "unclassified" string
     // sentinel for the hardcoded fallback section, so keep both here.
     const [selectedSectionId, setSelectedSectionId] = useState<string | number | null>(null);
-
+    // Admin hide/unhide flow state
+    const [showHideReasonDialog, setShowHideReasonDialog] = useState(false);
+    const [hideIsHiding, setHideIsHiding] = useState(false);
     // Calcular IDs visibles según el filtro actual
     const visibleMediaIds = event?.sections
         .flatMap((section) => section.media)
@@ -107,6 +110,113 @@ export default function Navbar() {
         setShowMovePanel(true);
         setSelectedSectionId(null);
     };
+
+    // ── Admin hide/unhide handlers ────────────────────────────────────────────
+
+    /**
+     * Called when the admin clicks the hide/eye button in selection mode.
+     *
+     * Rules (per task 8.1 spec):
+     *  - ALL selected hidden  → unhide all immediately (no dialog)
+     *  - ALL selected visible → open ReasonDialog, then hide all
+     *  - MIXED                → show an error (mixed state is ambiguous)
+     */
+    const handleHideToggleClick = () => {
+        if (selectedIds.size === 0) return;
+
+        const allMedia = event?.sections.flatMap((s) => s.media) ?? [];
+        const selectedMedia = allMedia.filter((m) => selectedIds.has(m.media_id));
+
+        const hiddenCount = selectedMedia.filter((m) => m.is_hidden).length;
+        const visibleCount = selectedMedia.filter((m) => !m.is_hidden).length;
+
+        if (hiddenCount > 0 && visibleCount > 0) {
+            // Mixed state — error
+            useErrorStore.getState().showError(
+                "Selección mixta: algunos elementos ya están ocultos y otros visibles. Selecciona solo elementos del mismo estado para ocultarlos o restaurarlos."
+            );
+            return;
+        }
+
+        if (hiddenCount > 0 && visibleCount === 0) {
+            // All hidden → unhide directly, no dialog
+            void performHideToggle(false, undefined);
+            return;
+        }
+
+        // All visible → show the reason dialog before hiding
+        setShowHideReasonDialog(true);
+    };
+
+    /**
+     * Executes the actual PATCH calls for each selected media item and updates
+     * the event store optimistically.
+     */
+    const performHideToggle = async (hidden: boolean, reason: string | undefined) => {
+        setHideIsHiding(true);
+        const mediaIds = Array.from(selectedIds);
+
+        try {
+            // Fire all PATCH requests in parallel for efficiency
+            const results = await Promise.allSettled(
+                mediaIds.map((id) =>
+                    fetch(`/api/admin/media/${id}/visibility`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ hidden, reason }),
+                    })
+                )
+            );
+
+            const failures = results.filter(
+                (r) => r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok)
+            );
+            if (failures.length > 0) {
+                useErrorStore.getState().showError(
+                    hidden
+                        ? "No se pudieron ocultar algunos elementos."
+                        : "No se pudieron restaurar algunos elementos."
+                );
+            }
+
+            // Optimistically update the event store: flip is_hidden on affected items
+            if (event) {
+                const updatedSet = new Set(mediaIds);
+                const updatedSections = event.sections.map((section) => ({
+                    ...section,
+                    media: section.media.map((m) =>
+                        updatedSet.has(m.media_id) ? { ...m, is_hidden: hidden } : m
+                    ),
+                }));
+                useEventStore.setState({ event: { ...event, sections: updatedSections } });
+            }
+
+            deselectAll();
+            toggleSelectedMode();
+        } catch (error) {
+            console.error("Error toggling visibility:", error);
+            useErrorStore.getState().showError("No se pudo cambiar la visibilidad.");
+        } finally {
+            setHideIsHiding(false);
+        }
+    };
+
+    const handleHideReasonSubmit = async (reason?: string) => {
+        setShowHideReasonDialog(false);
+        await performHideToggle(true, reason);
+    };
+
+    const handleHideReasonCancel = () => {
+        setShowHideReasonDialog(false);
+    };
+
+    // Derive label for the hide button: if all selected items are already hidden
+    // the button restores; otherwise it hides.
+    const selectedHiddenCount = (() => {
+        const allMedia = event?.sections.flatMap((s) => s.media) ?? [];
+        return allMedia.filter((m) => selectedIds.has(m.media_id) && m.is_hidden).length;
+    })();
+    const allSelectedHidden = selectedIds.size > 0 && selectedHiddenCount === selectedIds.size;
 
     const confirmMove = async () => {
         if (!selectedSectionId) return;
@@ -179,9 +289,16 @@ export default function Navbar() {
 
     return(
         <>
+            {/* Admin: reason dialog for hiding selected media */}
+            {showHideReasonDialog && (
+                <ReasonDialog
+                    onSubmit={handleHideReasonSubmit}
+                    onCancel={handleHideReasonCancel}
+                />
+            )}
+
             {/* Popup confirmación de borrado */}
-            {showDeleteConfirm && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4" style={{ backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }} onClick={() => setShowDeleteConfirm(false)}>
+            {showDeleteConfirm && (                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4" style={{ backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }} onClick={() => setShowDeleteConfirm(false)}>
                     <div className="bg-[#FFFCF8] rounded-2xl p-6 max-w-xs w-full flex flex-col items-center gap-y-4" onClick={(e) => e.stopPropagation()}>
                         <FiTrash2 size={32} className="text-red-400" />
                         <p className="text-center text-sm" style={{ color: '#5A463A' }}>
@@ -256,9 +373,33 @@ export default function Navbar() {
                                 <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white! md:text-pink-700! md:border-pink-200! md:bg-pink-50!" style={{ width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleDelete}>
                                     <FiTrash2 size={18} />
                                 </Button>
+                                {/* Hide/Unhide button: admin-only (Req 1.1, 1.2, 1.3) */}
+                                {user?.isAdmin && (
+                                    <button
+                                        className="!rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-white md:text-pink-700 md:border-pink-200 md:bg-pink-50 flex items-center justify-center transition-opacity"
+                                        style={{ width: '40px', height: '40px', padding: 0, opacity: hideIsHiding ? 0.5 : 1 }}
+                                        onClick={handleHideToggleClick}
+                                        disabled={hideIsHiding}
+                                        title={allSelectedHidden ? "Restaurar visibilidad" : "Ocultar"}
+                                    >
+                                        {allSelectedHidden ? (
+                                            /* Eye icon (restore) */
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                                <circle cx="12" cy="12" r="3" />
+                                            </svg>
+                                        ) : (
+                                            /* Eye-off icon (hide) */
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                                                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                                                <line x1="1" y1="1" x2="23" y2="23" />
+                                            </svg>
+                                        )}
+                                    </button>
+                                )}
                             </>
-                        )}
-                    </div>
+                        )}                    </div>
 
                     {/* Centro: contador */}
                     <span className="text-sm font-black text-white/80 md:text-pink-700 text-center">

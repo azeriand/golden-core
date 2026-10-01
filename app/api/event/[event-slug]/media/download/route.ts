@@ -49,7 +49,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                 SELECT event_id
                 FROM events
                 WHERE event_slug = $2
-            )`, [mediaIds, eventSlug]);
+            )
+            AND (is_hidden = false OR $3 = true)`, [mediaIds, eventSlug, isAdmin]);
 
         if (mediaResult.rows.length !== mediaIds.length) {
             return new Response(

@@ -17,7 +17,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import jwt from 'jsonwebtoken';
 import { NextRequest } from 'next/server';
-import { verifyRequest } from '@/lib/auth';
+import { verifyRequest, requireAdmin } from '@/lib/auth';
 
 const TEST_SECRET = 'test-secret-for-verify-request';
 
@@ -158,6 +158,83 @@ describe('verifyRequest', () => {
             const text = await result.response.text();
             expect(text).not.toContain(TEST_SECRET);
             expect(text).not.toContain('garbage');
+        }
+    });
+});
+
+describe('requireAdmin', () => {
+    it('returns null when the auth result is ok and user is admin', () => {
+        const token = jwt.sign(
+            { userId: 42, email: 'admin@example.test', isAdmin: true },
+            TEST_SECRET,
+            { expiresIn: '1h' },
+        );
+        const authResult = verifyRequest(requestWithToken(token));
+
+        const errorResponse = requireAdmin(authResult);
+
+        expect(errorResponse).toBeNull();
+    });
+
+    it('returns 403 Forbidden when the user is authenticated but not admin', async () => {
+        const token = jwt.sign(
+            { userId: 7, email: 'user@example.test', isAdmin: false },
+            TEST_SECRET,
+            { expiresIn: '1h' },
+        );
+        const authResult = verifyRequest(requestWithToken(token));
+
+        const errorResponse = requireAdmin(authResult);
+
+        expect(errorResponse).not.toBeNull();
+        expect(errorResponse?.status).toBe(403);
+        const body = await errorResponse?.json();
+        expect(body).toEqual({ error: 'Forbidden: Admin access required' });
+    });
+
+    it('returns 401 when auth verification failed (missing token)', () => {
+        const authResult = verifyRequest(requestWithToken(undefined));
+
+        const errorResponse = requireAdmin(authResult);
+
+        expect(errorResponse).not.toBeNull();
+        expect(errorResponse?.status).toBe(401);
+    });
+
+    it('returns 401 when auth verification failed (invalid token)', () => {
+        const authResult = verifyRequest(requestWithToken('garbage'));
+
+        const errorResponse = requireAdmin(authResult);
+
+        expect(errorResponse).not.toBeNull();
+        expect(errorResponse?.status).toBe(401);
+    });
+
+    it('returns 500 when auth verification failed (missing JWT_SECRET)', () => {
+        const token = jwt.sign(
+            { userId: 1, email: 'user@example.test', isAdmin: true },
+            TEST_SECRET,
+            { expiresIn: '1h' },
+        );
+        delete process.env.JWT_SECRET;
+        const authResult = verifyRequest(requestWithToken(token));
+
+        const errorResponse = requireAdmin(authResult);
+
+        expect(errorResponse).not.toBeNull();
+        expect(errorResponse?.status).toBe(500);
+    });
+
+    it('preserves the original error response from verifyRequest', async () => {
+        // Test that requireAdmin passes through the exact response from verifyRequest
+        const authResult = verifyRequest(requestWithToken(undefined));
+        
+        const errorResponse = requireAdmin(authResult);
+
+        expect(errorResponse).not.toBeNull();
+        if (!authResult.ok && errorResponse) {
+            // Should be the same response object
+            expect(errorResponse).toBe(authResult.response);
         }
     });
 });
