@@ -114,31 +114,31 @@ export default function HomeTopLayout({ event_name, event_date, visibleMediaIds,
                     }} />
                     
                     <div className="fixed top-0 left-0 right-0 max-w-4xl mx-auto z-50 w-full px-6 py-3">
-
-                    {/* Layout compacto */}
-                    <div className="flex items-center justify-between relative">
-                        <h1 className="font-black text-white" style={{ fontSize: '1.2rem', fontWeight: 900 }}>{event_name}</h1>
-                        <div className="flex gap-x-2 items-center">
-                            <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={shareEvent}>
-                                <FaShare size={16} />
-                            </Button>
-                            {!isSelectionMode && (
-                                <Button appearance='mate' color="white" intensity={500} size='sm' className="py-2! rounded-xl! bg-white/15! backdrop-blur-md! border-white/20! text-white!" onClick={toggleSelectedMode}>
-                                    Seleccionar
+                        {/* Layout compacto */}
+                        <div className="flex items-center justify-between relative">
+                            <h1 className="font-black text-white" style={{ fontSize: '1.2rem', fontWeight: 900 }}>{event_name}</h1>
+                            <div className="flex gap-x-2 items-center">
+                                <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={shareEvent}>
+                                    <FaShare size={16} />
                                 </Button>
-                            )}
-                            {isSelectionMode && (
-                                <>
-                                    {isAdmin && (
-                                        <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleSelectAllToggle}>
-                                            {allSelected ? <MdOutlineCheckCircleOutline size={18} /> : <MdOutlineRadioButtonUnchecked size={18} />}
-                                        </Button>
-                                    )}
-                                    <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={toggleSelectedMode}>
-                                        <IoCloseOutline size={18} />
+                                {!isSelectionMode && (
+                                    <Button appearance='mate' color="white" intensity={500} size='sm' className="py-2! rounded-xl! bg-white/15! backdrop-blur-md! border-white/20! text-white!" onClick={toggleSelectedMode}>
+                                        Seleccionar
                                     </Button>
-                                </>
-                            )}
+                                )}
+                                {isSelectionMode && (
+                                    <>
+                                        {isAdmin && (
+                                            <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleSelectAllToggle}>
+                                                {allSelected ? <MdOutlineCheckCircleOutline size={18} /> : <MdOutlineRadioButtonUnchecked size={18} />}
+                                            </Button>
+                                        )}
+                                        <Button appearance='mate' color="white" intensity={500} size='sm' className="!rounded-full bg-white/15! backdrop-blur-md! border-white/20! text-white!" style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={toggleSelectedMode}>
+                                            <IoCloseOutline size={18} />
+                                        </Button>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </>
