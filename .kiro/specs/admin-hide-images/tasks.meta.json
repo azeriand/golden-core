@@ -1,0 +1,310 @@
+{
+  "pbtResults": {
+    "3.2 Write property test for visibility toggle endpoint": {
+      "status": "passed",
+      "lastRunTimestamp": 1790879590047
+    },
+    "3.4 Write property test for admin API visibility state inclusion": {
+      "status": "passed",
+      "lastRunTimestamp": 1790879671413
+    },
+    "5.4 Write property tests for public API filtering": {
+      "status": "passed",
+      "lastRunTimestamp": 1790879793052
+    },
+    "3.6 Write property test for audit trail": {
+      "status": "passed",
+      "lastRunTimestamp": 1790879861100
+    }
+  },
+  "executionHistory": {
+    "1. Create database schema and migration": [
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790873567751
+      },
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790873578820
+      },
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790874194348
+      }
+    ],
+    "2.1 Create or extend auth utilities with admin verification": [
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790873567785
+      },
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790873579056
+      },
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790874195315
+      }
+    ],
+    "3.1 Create PATCH /api/admin/media/[media_id]/visibility endpoint": [
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790873567815
+      },
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790874201339
+      },
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790874858003
+      }
+    ],
+    "3.3 Create GET /api/admin/media endpoint with filtering": [
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790873567843
+      },
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790874863410
+      },
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790876123771
+      },
+      {
+        "executionId": "355a166f-823d-4c14-bd0f-687e9220d50d",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790877995895
+      },
+      {
+        "executionId": "355a166f-823d-4c14-bd0f-687e9220d50d",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790878000033
+      }
+    ],
+    "3.5 Create GET /api/admin/media/[media_id]/history endpoint": [
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790873567866
+      },
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790874864289
+      },
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790876124740
+      },
+      {
+        "executionId": "355a166f-823d-4c14-bd0f-687e9220d50d",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790878006867
+      },
+      {
+        "executionId": "355a166f-823d-4c14-bd0f-687e9220d50d",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790878011217
+      }
+    ],
+    "4. Checkpoint - Ensure all admin API tests pass": [
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790873567924
+      },
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790876133437
+      },
+      {
+        "executionId": "355a166f-823d-4c14-bd0f-687e9220d50d",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790877946063
+      }
+    ],
+    "5.1 Identify and update all public media query endpoints": [
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790873567946
+      },
+      {
+        "executionId": "355a166f-823d-4c14-bd0f-687e9220d50d",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790877930839
+      },
+      {
+        "executionId": "355a166f-823d-4c14-bd0f-687e9220d50d",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790877934760
+      },
+      {
+        "executionId": "355a166f-823d-4c14-bd0f-687e9220d50d",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790878004004
+      }
+    ],
+    "5.2 Update direct media access endpoint": [
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790873567965
+      },
+      {
+        "executionId": "355a166f-823d-4c14-bd0f-687e9220d50d",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790878004870
+      }
+    ],
+    "5.3 Ensure public DTOs exclude visibility metadata": [
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790873567985
+      },
+      {
+        "executionId": "355a166f-823d-4c14-bd0f-687e9220d50d",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790878005593
+      }
+    ],
+    "6.1 Create app/dto/admin-media.ts with AdminMedia interface": [
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790873568009
+      },
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790874201606
+      },
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790874856955
+      }
+    ],
+    "7.1 Create MediaItemCard component with visibility toggle": [
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790873568031
+      }
+    ],
+    "7.2 Create VisibilityFilter component": [
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790873568080
+      }
+    ],
+    "7.3 Create ReasonDialog component": [
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790873568098
+      }
+    ],
+    "7.4 Create ModerationHistory modal component": [
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790873568119
+      }
+    ],
+    "8.1 Create or update admin media management page": [
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790873568140
+      }
+    ],
+    "9. Final checkpoint - End-to-end validation": [
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790873568158
+      }
+    ],
+    "2. Implement admin authentication utilities": [
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790874195338
+      }
+    ],
+    "6. Create admin DTO types": [
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790874856981
+      }
+    ],
+    "3. Implement admin API endpoints": [
+      {
+        "executionId": "61dfb96c-8d9b-4e02-a5cf-6995f9a8a9e0",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790876124760
+      }
+    ],
+    "3.2 Write property test for visibility toggle endpoint": [
+      {
+        "executionId": "355a166f-823d-4c14-bd0f-687e9220d50d",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790877956603
+      },
+      {
+        "executionId": "355a166f-823d-4c14-bd0f-687e9220d50d",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790877992066
+      }
+    ],
+    "3.4 Write property test for admin API visibility state inclusion": [
+      {
+        "executionId": "355a166f-823d-4c14-bd0f-687e9220d50d",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790877960292
+      }
+    ],
+    "3.6 Write property test for audit trail": [
+      {
+        "executionId": "355a166f-823d-4c14-bd0f-687e9220d50d",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790877967897
+      }
+    ],
+    "5.4 Write property tests for public API filtering": [
+      {
+        "executionId": "355a166f-823d-4c14-bd0f-687e9220d50d",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790877971750
+      }
+    ],
+    "7.5 Write unit tests for UI components": [
+      {
+        "executionId": "355a166f-823d-4c14-bd0f-687e9220d50d",
+        "chatSessionId": "sess_e954908d-e8c4-46a7-9cd1-234af0394885",
+        "timestamp": 1790877975406
+      }
+    ]
+  }
+}

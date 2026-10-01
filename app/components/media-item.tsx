@@ -6,6 +6,7 @@ import LikeCounter from "./like-counter";
 import BlurhashCanvas from "./blurhash-canvas";
 import { Section } from "../dto/section";
 import useMediaUiStore from "../src/stores/media-ui.store";
+import useAuthStore from "../src/stores/auth.store";
 import { MdOutlineRadioButtonUnchecked } from "react-icons/md";
 import { MdOutlineCheckCircleOutline } from "react-icons/md";
 
@@ -16,7 +17,7 @@ import { MdOutlineCheckCircleOutline } from "react-icons/md";
 // source of truth (and easy to tune) rather than a magic number inline.
 const POSTER_LOAD_TIMEOUT_MS = 8000;
 
-export default function MediaItem({index, src, type, poster_url, likes, liked, mediaID, section_id, sections, blurhash, username, onZoom, displayHeight, onAspectMeasured}: {index: number, src: string, type: string | null, poster_url?: string | null, likes: number, liked: boolean, mediaID: number, section_id: number|null, sections: Section[], blurhash: string | null, username: string | null, onZoom: () => void, displayHeight?: number, onAspectMeasured?: (aspect: number) => void}) {
+export default function MediaItem({index, src, type, poster_url, likes, liked, mediaID, section_id, sections, blurhash, username, onZoom, displayHeight, onAspectMeasured, is_hidden}: {index: number, src: string, type: string | null, poster_url?: string | null, likes: number, liked: boolean, mediaID: number, section_id: number|null, sections: Section[], blurhash: string | null, username: string | null, onZoom: () => void, displayHeight?: number, onAspectMeasured?: (aspect: number) => void, is_hidden?: boolean}) {
     const [loaded, setLoaded] = useState(false);
     const [errored, setErrored] = useState(false);
     const [blurhashFailed, setBlurhashFailed] = useState(false);
@@ -133,6 +134,7 @@ export default function MediaItem({index, src, type, poster_url, likes, liked, m
     const { isSelectionMode, selectedIds, toggleSelected } = useMediaUiStore();
 
     const selected = selectedIds.has(mediaID);
+    const isAdmin = useAuthStore.getState().user?.isAdmin ?? false;
 
     const handleClick = () => {
         if (isSelectionMode) {
@@ -148,6 +150,38 @@ export default function MediaItem({index, src, type, poster_url, likes, liked, m
 
             {selected && (
                 <div className="absolute inset-0 z-5 bg-white/30 pointer-events-none transition-opacity duration-200" />
+            )}
+
+            {/* Hidden state overlay + badge: only shown to admins (Req 2.1, 2.2) */}
+            {isAdmin && is_hidden && (
+                <>
+                    {/* Subtle red tint overlay to distinguish hidden items */}
+                    <div
+                        className="absolute inset-0 z-10 pointer-events-none"
+                        style={{ backgroundColor: "rgba(239, 68, 68, 0.12)" }}
+                    />
+                    {/* Eye-off badge in top-left corner */}
+                    <div
+                        className="absolute top-2 left-2 z-20 flex items-center gap-x-1 px-2 py-0.5 rounded-full text-xs font-semibold"
+                        style={{ backgroundColor: "rgba(254, 226, 226, 0.95)", color: "#DC2626" }}
+                    >
+                        <svg
+                            width="11"
+                            height="11"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                            <line x1="1" y1="1" x2="23" y2="23" />
+                        </svg>
+                        Oculto
+                    </div>
+                </>
             )}
 
             { isSelectionMode && (

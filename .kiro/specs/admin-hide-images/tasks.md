@@ -6,21 +6,21 @@ This plan implements the admin-hide-images feature, which allows administrators 
 
 ## Tasks
 
-- [ ] 1. Create database schema and migration
+- [x] 1. Create database schema and migration
   - Create migration file with media table extensions (is_hidden, hidden_at, hidden_by columns)
   - Create media_moderation_log table with audit trail structure
   - Add database indexes for performance (idx_media_is_hidden, idx_media_hidden_at, idx_moderation_log_media_id, idx_moderation_log_created_at)
   - Add CHECK constraint for hidden_by consistency
   - _Requirements: 1.2, 1.3, 1.4, 4.1, 4.2_
 
-- [ ] 2. Implement admin authentication utilities
-  - [ ] 2.1 Create or extend auth utilities with admin verification
+- [x] 2. Implement admin authentication utilities
+  - [x] 2.1 Create or extend auth utilities with admin verification
     - Implement verifyRequest function that validates JWT and extracts isAdmin claim
     - Implement requireAdmin helper that returns appropriate error responses
     - _Requirements: All admin-facing requirements (1.x, 2.x, 4.x, 5.x)_
 
-- [ ] 3. Implement admin API endpoints
-  - [ ] 3.1 Create PATCH /api/admin/media/[media_id]/visibility endpoint
+- [x] 3. Implement admin API endpoints
+  - [x] 3.1 Create PATCH /api/admin/media/[media_id]/visibility endpoint
     - Verify admin authentication
     - Validate request body (hidden boolean, optional reason with 500 char limit)
     - Update media visibility with transaction and row-level locking
@@ -33,7 +33,7 @@ This plan implements the admin-hide-images feature, which allows administrators 
     - **Property 2: State Change Returns Success**
     - **Validates: Requirements 1.2, 1.3, 1.5, 6.2**
 
-  - [ ] 3.3 Create GET /api/admin/media endpoint with filtering
+  - [x] 3.3 Create GET /api/admin/media endpoint with filtering
     - Verify admin authentication
     - Parse query parameters (event_id, hidden filter, section_id, limit, offset)
     - Query media with admin metadata (is_hidden, hidden_at, hidden_by, hidden_by_username)
@@ -57,7 +57,7 @@ This plan implements the admin-hide-images feature, which allows administrators 
     - **Property 10: Reason Length Validation**
     - **Validates: Requirements 4.1, 4.2, 5.2, 5.4**
 
-- [ ] 4. Checkpoint - Ensure all admin API tests pass
+- [x] 4. Checkpoint - Ensure all admin API tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 5. Update public API endpoints to filter hidden media
@@ -83,8 +83,8 @@ This plan implements the admin-hide-images feature, which allows administrators 
     - **Property 7: Public APIs Exclude Hidden State Field**
     - **Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5**
 
-- [ ] 6. Create admin DTO types
-  - [ ] 6.1 Create app/dto/admin-media.ts with AdminMedia interface
+- [x] 6. Create admin DTO types
+  - [x] 6.1 Create app/dto/admin-media.ts with AdminMedia interface
     - Extend existing Media type with is_hidden, hidden_at, hidden_by, hidden_by_username fields
     - Create ModerationLogEntry interface for history responses
     - _Requirements: 2.4, 4.3, 4.4_

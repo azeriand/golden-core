@@ -23,6 +23,7 @@ export async function POST(
         return auth.response;
     }
     const userId = auth.user.userId;
+    const isAdmin = auth.user.isAdmin;
 
     const result = await pool.query(
         `SELECT media.media_id
@@ -30,8 +31,9 @@ export async function POST(
         INNER JOIN events
         ON media.event_id = events.event_id
         WHERE media.media_id = $1
-        AND events.event_slug = $2`,
-        [mediaId, eventSlug]
+        AND events.event_slug = $2
+        AND (media.is_hidden = false OR $3 = true)`,
+        [mediaId, eventSlug, isAdmin]
     );
 
     if (result.rows.length === 0) {

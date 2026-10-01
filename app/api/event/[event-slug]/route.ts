@@ -115,6 +115,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       media.height,
       media.poster_url,
       media.original_url,
+      media.is_hidden,
       users.username,
       COALESCE(l.likes, 0) AS likes,
       EXISTS (
@@ -124,7 +125,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           AND user_like.user_id = $2
       ) AS liked
       FROM events
-      LEFT JOIN media ON events.event_id = media.event_id
+      LEFT JOIN media ON events.event_id = media.event_id AND (media.is_hidden = false OR $3 = true)
       LEFT JOIN sections ON sections.section_id = media.section_id AND sections.event_id = media.event_id
       LEFT JOIN users ON media.user_id = users.user_id
       LEFT JOIN (
@@ -134,7 +135,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       ) l ON media.media_id = l.media_id
       WHERE events.event_slug = $1
       ORDER BY sections.section_id NULLS LAST, media.date;`,
-      [eventSlug, userId]
+      [eventSlug, userId, decoded.isAdmin]
     );
 
     if (!result.rows || result.rows.length === 0) {
@@ -183,13 +184,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     };
 
     for (const row of rows) {
-      const { media_id, media_section_id, user_id, content, likes, liked, date, type, blurhash, width, height, poster_url, original_url, username } = row;
+      const { media_id, media_section_id, user_id, content, likes, liked, date, type, blurhash, width, height, poster_url, original_url, username, is_hidden } = row;
       if (media_id == null) continue; // event with no media (LEFT JOIN null row)
 
       // poster_url is a nullable column (migration 004); a NULL DB value maps to
       // `null` in the DTO, meaning "no poster ready yet" (Req 11.2, 11.3, 15.4).
       // width/height are nullable (migration 005); NULL maps to null ("unknown").
-      const mediaItem: Media = { media_id, user_id, content, likes, liked, date, type, section_id: media_section_id, blurhash, width: width ?? null, height: height ?? null, poster_url: poster_url ?? null, original_url: original_url ?? null, username };
+      // is_hidden is only populated for admin users; undefined in public responses.
+      const mediaItem: Media = { media_id, user_id, content, likes, liked, date, type, section_id: media_section_id, blurhash, width: width ?? null, height: height ?? null, poster_url: poster_url ?? null, original_url: original_url ?? null, username, ...(decoded.isAdmin ? { is_hidden: is_hidden ?? false } : {}) };
       const target =
         media_section_id == null
           ? ensureUnclassified()

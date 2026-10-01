@@ -263,6 +263,7 @@ export default function Masonry({ images, sections, onZoom, showPlaceholders = t
                                         onZoom={() => onZoom(media)}
                                         displayHeight={cell.height}
                                         onAspectMeasured={(aspect) => onAspectMeasured(media.media_id, aspect)}
+                                        is_hidden={media.is_hidden}
                                     />
                                 </div>
                             );

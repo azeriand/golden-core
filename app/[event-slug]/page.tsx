@@ -13,6 +13,7 @@ import { Media } from "../dto/media";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from 'next/navigation'
 import ZoomPhoto from "../components/zoom-photo";
+import VisibilityFilter, { VisibilityFilterValue } from "../components/admin/VisibilityFilter";
 
 const DEMO_EMAIL = "demo@golden-core.app";
 
@@ -25,6 +26,10 @@ export default function Home() {
   const params = useParams<{ id: string, ['event-slug']: string }>()
   const router = useRouter();
   const slug = params["event-slug"];
+
+  // Visibility filter for admins (Req 2.3)
+  const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilterValue>("all");
+  const isAdmin = user?.isAdmin ?? false;
 
   // Hydration guard: the very first client render must match the SSR output,
   // so the loader is rendered until the component is mounted on the client.
@@ -211,9 +216,12 @@ export default function Home() {
 
   const filteredSections = event.sections.map((section) => ({
     ...section, media: section.media.filter((media) => {
-      if (state === 'home') return true;
-      if (state === 'myPhotos') return media.user_id === user?.id;
-      if (state === 'favPhotos') return media.liked;
+      // User view filter (home / myPhotos / favPhotos)
+      if (state !== 'home' && state === 'myPhotos' && media.user_id !== user?.id) return false;
+      if (state !== 'home' && state === 'favPhotos' && !media.liked) return false;
+      // Admin visibility filter (Req 2.3): only applied for admins
+      if (isAdmin && visibilityFilter === 'visible' && media.is_hidden) return false;
+      if (isAdmin && visibilityFilter === 'hidden' && !media.is_hidden) return false;
       return true;
     }),
   })).filter((section) => section.media.length > 0);
@@ -229,6 +237,12 @@ export default function Home() {
       )}
       <HomeTopLayout event_name={event.event_name} event_date={event.event_date} event_cover_img={event.event_cover_img} visibleMediaIds={filteredSections.flatMap((s) => s.media.map((m) => m.media_id))} />
       {state !== "home" && <UserNavbar />}
+      {/* Admin visibility filter (Req 2.3): only shown when the user is an admin */}
+      {isAdmin && (
+        <div className="flex w-full px-4 justify-end">
+          <VisibilityFilter value={visibilityFilter} onChange={setVisibilityFilter} />
+        </div>
+      )}
       {/* Global upload placeholders: rendered ONCE here so they appear INSTANTLY
           on enqueue, regardless of whether any section currently has media in
           the active view (previously placeholders only lived inside a per-section

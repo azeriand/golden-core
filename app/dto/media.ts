@@ -28,4 +28,10 @@ export interface Media {
      */
     width: number | null;
     height: number | null;
+    /**
+     * Whether this media item is hidden from public view. Only present in admin
+     * responses; undefined in public responses (Req 3.5). Populated from the
+     * event API when the requesting user has isAdmin = true.
+     */
+    is_hidden?: boolean;
 }
