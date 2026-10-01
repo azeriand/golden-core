@@ -316,6 +316,8 @@ export default function Navbar() {
 
                                 setFileError(null);
                                 enqueueFiles(files, eventSlug);
+                                // Redirect to "Mis fotos" so the user can see the upload progress
+                                changeState('myPhotos');
                                 e.target.value = "";
                             }}/>
                         </>
