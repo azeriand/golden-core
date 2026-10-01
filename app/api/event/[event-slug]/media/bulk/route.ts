@@ -80,7 +80,12 @@ export async function DELETE(
     const foundIds = mediaResult.rows.map((row: any) => row.media_id);
     const blobUrls = mediaResult.rows.map((row: any) => row.content).filter(Boolean);
 
-    // Delete from database
+    // Delete from database — remove dependent media_jobs rows first to avoid
+    // the FK constraint violation (media_jobs.media_id has no ON DELETE CASCADE).
+    await pool.query(
+        `DELETE FROM media_jobs WHERE media_id = ANY($1::int[])`,
+        [foundIds]
+    );
     await pool.query(
         `DELETE FROM media WHERE media_id = ANY($1::int[])`,
         [foundIds]
