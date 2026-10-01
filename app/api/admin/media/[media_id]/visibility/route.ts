@@ -44,15 +44,29 @@ export async function PATCH(
     }
 
     try {
-        const result = await pool.query(
-            `UPDATE media
-             SET is_hidden = $1,
-                 hidden_at = CASE WHEN $1 = true THEN now() ELSE NULL END,
-                 hidden_by = CASE WHEN $1 = true THEN $2 ELSE NULL END
-             WHERE media_id = $3
-             RETURNING media_id, is_hidden, hidden_at, hidden_by`,
-            [body.hidden, adminUserId, mediaId]
-        );
+        // Run two separate queries depending on the direction so the
+        // check_hidden_by_consistency constraint is always satisfied:
+        //   hide   → set is_hidden=true, hidden_at=now(), hidden_by=<admin>
+        //   unhide → set is_hidden=false, hidden_at=NULL, hidden_by=NULL
+        const result = body.hidden
+            ? await pool.query(
+                `UPDATE media
+                 SET is_hidden = true,
+                     hidden_at = now(),
+                     hidden_by = $1
+                 WHERE media_id = $2
+                 RETURNING media_id, is_hidden, hidden_at, hidden_by`,
+                [adminUserId, mediaId]
+            )
+            : await pool.query(
+                `UPDATE media
+                 SET is_hidden = false,
+                     hidden_at = NULL,
+                     hidden_by = NULL
+                 WHERE media_id = $1
+                 RETURNING media_id, is_hidden, hidden_at, hidden_by`,
+                [mediaId]
+            );
 
         if (result.rows.length === 0) {
             return new Response(
