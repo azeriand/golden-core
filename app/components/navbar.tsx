@@ -293,7 +293,7 @@ export default function Navbar() {
                             <button className="flex-1 py-2 rounded-xl text-sm font-medium border border-gray-200" style={{ color: '#5A463A' }} onClick={() => setShowDeleteConfirm(false)}>
                                 Cancelar
                             </button>
-                            <button className="flex-1 py-2 rounded-xl text-sm font-medium bg-red-400 text-white" onClick={confirmDelete}>
+                            <button className="flex-1 py-2 rounded-xl text-sm font-medium" style={{ backgroundColor: '#f87171', color: '#ffffff' }} onClick={confirmDelete}>
                                 Eliminar
                             </button>
                         </div>
@@ -325,7 +325,12 @@ export default function Navbar() {
                                 Cancelar
                             </button>
                             <button
-                                className={`flex-1 py-2 rounded-xl text-sm font-medium text-white ${selectedSectionId ? 'bg-pink-500' : 'bg-pink-300 cursor-not-allowed'}`}
+                                className="flex-1 py-2 rounded-xl text-sm font-medium"
+                                style={{
+                                    backgroundColor: selectedSectionId ? '#E83E8C' : '#F4A6C4',
+                                    color: '#ffffff',
+                                    cursor: selectedSectionId ? 'pointer' : 'not-allowed',
+                                }}
                                 onClick={confirmMove}
                             >
                                 Mover
