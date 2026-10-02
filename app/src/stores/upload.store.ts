@@ -1066,6 +1066,19 @@ const useUploadStore = create<UploadStore>((set, get) => {
         attempt: 0,
       }));
 
+      // UPLOAD PRIORITY: sort so smaller non-video files upload first, and
+      // videos are deferred to the end of the batch (they will each drain the
+      // active slots before the next item starts; see processQueue).
+      // Within each group (non-video / video) items are ordered by ascending
+      // file size so the lightest files finish fastest and are least likely to
+      // be interrupted by a later batch or connectivity loss.
+      newItems.sort((a, b) => {
+        const aIsVideo = isVideoMime(a.contentType);
+        const bIsVideo = isVideoMime(b.contentType);
+        if (aIsVideo !== bIsVideo) return aIsVideo ? 1 : -1; // videos last
+        return a.originalSize - b.originalSize; // smaller first within group
+      });
+
       set((state) => ({ items: [...state.items, ...newItems] }));
 
       // Persist the cheap metadata record for EVERY item right away (small,
@@ -1133,11 +1146,37 @@ const useUploadStore = create<UploadStore>((set, get) => {
       }
 
       const eventSlug = getEventSlug();
+
+      // VIDEO BLOCKING: a video upload is heavy and may time-out or exhaust
+      // bandwidth; letting other uploads race alongside it risks partial
+      // failures. Rules (rely on the sort order set by enqueueFiles):
+      //
+      //   1. If ANY active upload is a video → hold the whole queue until it
+      //      finishes (only one video runs at a time and nothing piggybacks).
+      //   2. If the next queued item is a video → wait until all active uploads
+      //      drain (activeCount reaches 0) before starting it, so the video
+      //      gets the full bandwidth and the lighter files already in flight
+      //      finish cleanly first.
+      const activeItems = items.filter(
+        (i) =>
+          i.status === "uploading" ||
+          i.status === "processing"
+      );
+      const videoIsActive = activeItems.some((i) => isVideoMime(i.contentType));
+      if (videoIsActive) return; // rule 1: wait for the active video to finish
+
+      const nextItem = queuedItems[0];
+      const nextIsVideo = isVideoMime(nextItem.contentType);
+      if (nextIsVideo && activeCount > 0) return; // rule 2: drain first
+
       // Only fill the exact number of free slots. Because startItem is the sole
       // place activeCount is incremented and it only runs for a `queued` item
       // (immediately flipped to `uploading`), an item can never occupy more than
       // one slot even if processQueue is called multiple times concurrently.
-      const itemsToProcess = queuedItems.slice(0, slotsAvailable);
+      // When the next item is a video, start it alone (occupies exactly 1 slot).
+      const itemsToProcess = nextIsVideo
+        ? [nextItem]
+        : queuedItems.slice(0, slotsAvailable);
       for (const item of itemsToProcess) {
         startItem(item.id, eventSlug, false);
       }
