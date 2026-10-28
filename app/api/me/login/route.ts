@@ -54,6 +54,17 @@ function invalidCredentials(): Response {
 
 export async function POST(request: NextRequest) {
 
+    // CLOSURE GUARD (defense in depth; proxy.ts also blocks this at the edge):
+    // while the site is closed, user login is disabled. The demo does NOT use
+    // this endpoint (it authenticates via POST /api/demo/auth), so the demo is
+    // unaffected.
+    if (process.env.MAINTENANCE_MODE === "true") {
+        return new Response(
+            JSON.stringify({ error: "El acceso está deshabilitado temporalmente" }),
+            { status: 503, headers: { "Content-Type": "application/json" } }
+        );
+    }
+
     try {
         // 1. Rate limit BEFORE doing any work (DB query / bcrypt).
         const key = getClientKey(request);
