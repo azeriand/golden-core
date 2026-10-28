@@ -18,6 +18,18 @@ const hashedPassword = (password: string) => new Promise((resolve, reject) => {
 
 export async function POST(request: NextRequest) {
 
+  // CLOSURE GUARD (defense in depth; proxy.ts also blocks this at the edge):
+  // while the site is closed, account creation is disabled (login is blocked
+  // too, in its own route). The demo does NOT use this endpoint (it
+  // authenticates via POST /api/demo/auth against an existing user), so the
+  // demo is unaffected.
+  if (process.env.MAINTENANCE_MODE === "true") {
+    return new Response("El acceso está deshabilitado temporalmente", {
+      status: 503,
+      headers: { "Content-Type": "text/plain" },
+    });
+  }
+
   try{
     const { username, email, password, eventId } = await request.json();
     const isAdmin = false;

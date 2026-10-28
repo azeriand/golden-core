@@ -22,6 +22,8 @@ export default function RootLayout({
   const [mode, setMode] = useState<"signup" | "login">("signup");
   const pathname = usePathname();
   const isDemoRoute = pathname === "/demo";
+  // Maintenance pages are public and must never show the auth popup overlay.
+  const isMaintenanceRoute = pathname === "/maintenance" || pathname.startsWith("/maintenance/");
  
   useEffect(() => {
     loadUser();
@@ -36,7 +38,7 @@ export default function RootLayout({
         <GoogleAnalytics gaId="G-02YJDSDMZR" />
         <ServiceWorkerRegister />
         <ErrorPopup />
-        {!loading && !authenticated && !isDemoRoute && (<AuthPopup />)}
+        {!loading && !authenticated && !isDemoRoute && !isMaintenanceRoute && (<AuthPopup />)}
         <div className='mx-auto flex min-h-screen w-full max-w-4xl flex-col'>
           <main className="flex flex-1 px-4 pt-4 py-4 pb-28 sm:px-1">
             {children}
